@@ -2,6 +2,7 @@
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>豬豬小可愛*粉紅</title>
+<script>addEventListener('error',function(e){var d=document.createElement('pre');d.style.cssText='position:fixed;left:0;right:0;top:0;margin:0;padding:8px;background:#fff;color:#c00;font-size:12px;white-space:pre-wrap;z-index:99';d.textContent='載入錯誤：'+(e.message||'')+' (行 '+(e.lineno||'?')+')';(document.body||document.documentElement).appendChild(d)})</script>
 <style>
 :root{--bg:#ffd9e8;--fg:#6b1d42;--shell:#fbe3ec;--btn:#d9588a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a1220;--fg:#ffd0e2;--shell:#3a2430;--btn:#d9588a}}
@@ -20,6 +21,7 @@ canvas{width:100%;display:block;border:5px solid #4a4a52;border-radius:6px;backg
 p{margin:0;font-size:13px;opacity:.8;text-align:center;max-width:440px}
 </style></head><body>
 <div class="shell">
+<noscript>此頁面需要啟用 JavaScript 才能遊玩。</noscript>
 <canvas id="c" width="480" height="432"></canvas>
 <div id="pad">
 <div class="dp"><button class="u" data-k="up">▲</button><button class="l" data-k="left">◀</button><i></i><button class="r" data-k="right">▶</button><button class="d" data-k="down">▼</button></div>
@@ -47,9 +49,9 @@ const GYM=["HHHHHHHHHH","H........H","H........H","H........H","H........H","H..
 const MAPS={town:TOWN,route:ROUTE,gym:GYM};
 const WARP={'town,19,14':['route',1,6],'route,0,6':['town',18,14],'route,15,3':['gym',4,7],'gym,4,8':['route',15,4]};
 let MAP=TOWN,MW=20,MH=16,cur='town';
-function setMap(n){cur=n;FL['v'+n]=1;MAP=MAPS[n];MW=MAP[0].length;MH=MAP.length}
+function setMap(n){cur=n;FL['v'+n]=1;MAP=MAPS[n];MW=MAP[0].length;MH=MAP.length;P4.splice(0,4,...palOf(n))}
 const gen=(n,xs,last)=>{const r=[];for(let y=0;y<12;y++){let s='';for(let x=0;x<20;x++){const b=xs.find(a=>x>=a&&x<a+3)||(x>=8&&x<11?8:0);s+=(y%11===0||x%19===0)&&!(y===6&&(x===0||(x===19&&!last)))?'#':y===2&&b?'H':y===3&&b?(x===b+1?(b===8?'C':'G'):'H'):y>6&&(x*3+y*5+n*7)%9<3?'g':'.'}r.push(s)}return r};
-MAPS.a2=gen(2,[4,13]);MAPS.a3=gen(3,[4,13]);MAPS.a4=gen(4,[13]);
+MAPS.a2=gen(2,[13]);MAPS.a3=gen(3,[13]);MAPS.a4=gen(4,[13]);MAPS.a5=gen(5,[13]);MAPS.a6=gen(6,[13]);MAPS.school=gen(7,[]).map(r=>r.replace(/g/g,'.'));
 ROUTE[2]=ROUTE[2].slice(0,6)+'HHH'+ROUTE[2].slice(9);ROUTE[3]=ROUTE[3].slice(0,6)+'HCH'+ROUTE[3].slice(9);
 const SEA=[],VOL=[];
 for(let y=0;y<14;y++){let s='',v='';for(let x=0;x<20;x++){let c='w';
@@ -64,17 +66,17 @@ MAPS.sea=SEA;MAPS.volc=VOL;MAPS.maze=mz(21,15,7);
 SEA[8]=SEA[8].slice(0,6)+'E'+SEA[8].slice(7);
 VOL[8]=VOL[8].slice(0,6)+'E'+VOL[8].slice(7);
 const SECRETS={'secret:town:16:12':{title:'星糖石板',lines:['石板忽然亮了起來，粉紅色的星光落在小豬身上！','小豬獲得隱藏祝福：最大體力提升 6 點！'],reward:'maxhp'},'secret:route:4:5':{title:'草叢郵筒',lines:['草叢裡藏著一個古老郵筒。','裡面有一封寫給勇者的信：前方的怪物會使用新招式！'],reward:'exp'},'secret:sea:6:8':{title:'漂流瓶',lines:['小豬撿到了一個漂流瓶。','瓶中藏著冰藍色的糖果，隊伍全員恢復體力！'],reward:'heal'},'secret:volc:6:8':{title:'熔岩裂隙',lines:['裂隙深處傳來低沉的咆哮……','小豬找到稀有怪物的氣息，接下來更容易遇到牠們！'],reward:'rare'}};
-WARP['a4,19,6']=['sea',1,6];WARP['sea,0,6']=['a4',18,6];WARP['sea,10,10']=['volc',2,6];WARP['volc,0,6']=['sea',10,11];WARP['volc,19,6']=['maze',1,1];WARP['maze,0,1']=['volc',18,6];
-const FLY=[['town','豬豬鎮',3,4],['route','草原路',7,4],['a2','綠野城',9,4],['a3','雷鳴城',9,4],['a4','港口城',9,4]];
+WARP['a6,19,6']=['sea',1,6];WARP['sea,0,6']=['a6',18,6];WARP['sea,10,10']=['volc',2,6];WARP['volc,0,6']=['sea',10,11];WARP['volc,19,6']=['maze',1,1];WARP['maze,0,1']=['volc',18,6];
+const FLY=[['town','豬豬鎮',3,4],['forest','月影森林',2,6],['route','藍濱水族城',7,4],['school','星學堂',9,4],['a2','花語城',9,4],['a3','雷鳴城',9,4],['a4','烈焰城',9,4],['a5','礦石城',9,4],['a6','冰晶城',9,4]];
 ROUTE[6]=ROUTE[6].slice(0,19)+'.';
 ROUTE[5]=ROUTE[5].slice(0,4)+'E'+ROUTE[5].slice(5);
-const AR=['route','a2','a3','a4'];
-AR.forEach((a,i)=>{if(i)WARP[a+',0,6']=[AR[i-1],18,6];if(i<3)WARP[a+',19,6']=[AR[i+1],1,6]});
-const GYMS=[{m:'route',x:15,y:3,s:3,lv:6},{m:'a2',x:5,y:3,s:1,lv:9},{m:'a2',x:14,y:3,s:4,lv:12},{m:'a3',x:5,y:3,s:2,lv:15},{m:'a3',x:14,y:3,s:5,lv:18},{m:'a4',x:14,y:3,s:0,lv:22},{m:'sea',x:15,y:4,s:6,lv:26}];
+const AR=['route','school','a2','a3','a4','a5','a6'];
+AR.forEach((a,i)=>{if(i)WARP[a+',0,6']=[AR[i-1],18,6];if(i<AR.length-1)WARP[a+',19,6']=[AR[i+1],1,6]});
+const GYMS=[{m:'route',x:15,y:3,s:3,lv:6},{m:'a2',x:14,y:3,s:1,lv:9},{m:'a3',x:14,y:3,s:2,lv:12},{m:'a4',x:14,y:3,s:4,lv:15},{m:'a5',x:14,y:3,s:5,lv:18},{m:'a6',x:14,y:3,s:10,lv:22},{m:'sea',x:15,y:4,s:6,lv:26}];
 GYMS.forEach((g,i)=>{MAPS['g'+i]=GYM;WARP[`${g.m},${g.x},${g.y}`]=['g'+i,4,7];WARP[`g${i},4,8`]=[g.m,g.x,g.y+1]});
 const party=[{n:'小豬',t:'普',lv:1,max:30,hp:30,exp:0,dh:30,mv:[0,1,2,3]}];let pig=party[0];const dex=new Set(),FL={vtown:1},pcBox=[];let surf=false;
 const BAG={coins:500,feed:3,superFeed:0,legendFeed:0,rep100:0,rep200:0,rep400:0,repel:0};
-const QUESTS={patrol:{title:'草原巡查',offer:'草原路最近出現了許多野生怪物，願意去巡查一次嗎？',progress:()=>`進度：前往草原路並完成 1 場戰鬥（目前 ${FL.wins||0}/1）。`,done:()=>!!FL.vroute&&(FL.wins||0)>=1,reward:'exp',give:async()=>{pig.exp+=18;await say('獲得 18 點經驗值！')},doneText:'太好了，草原路已經安全多了！'},bottle:{title:'漂流瓶的回信',offer:'港口城有人想找回漂流瓶中的回信，能幫忙嗎？',progress:()=>`進度：找到海域漂流瓶（${FL['secret:sea:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:sea:6:8'],reward:'maxhp',give:async()=>{party.forEach(m=>{m.max+=3;m.hp=m.max});await say('全隊最大體力提升 3 點！')},doneText:'這封回信終於送到了，謝謝你！'},rare:{title:'月光靈研究',offer:'研究員想確認月光靈是否真的存在，能帶回牠的圖鑑紀錄嗎？',progress:()=>`進度：捕獲月光靈（${dex.has('月光靈')?'已完成':'尚未完成'}）。`,done:()=>dex.has('月光靈'),reward:'heal',give:async()=>{party.forEach(m=>m.hp=m.max);await say('研究員替隊伍完全恢復了體力！')},doneText:'太棒了！月光靈的資料會成為重要研究成果！'},legend:{title:'傳說試煉',offer:'完成火山裂隙的探索，便能取得唯一的傳說捕獲飼料。要接受試煉嗎？',progress:()=>`進度：找到熔岩裂隙（${FL['secret:volc:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:volc:6:8'],give:async()=>{BAG.legendFeed=1;await say('獲得唯一的「傳說必捕飼料」！每次遊戲只能取得 1 枚。')},doneText:'你通過了傳說試煉！'}};
+const QUESTS={patrol:{title:'草原巡查',offer:'水族城附近最近出現了許多野生怪物，願意去巡查一次嗎？',progress:()=>`進度：前往藍濱水族城並完成 1 場戰鬥（目前 ${FL.wins||0}/1）。`,done:()=>!!FL.vroute&&(FL.wins||0)>=1,reward:'exp',give:async()=>{pig.exp+=18;await say('獲得 18 點經驗值！')},doneText:'太好了，草原路已經安全多了！'},bottle:{title:'漂流瓶的回信',offer:'港口城有人想找回漂流瓶中的回信，能幫忙嗎？',progress:()=>`進度：找到海域漂流瓶（${FL['secret:sea:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:sea:6:8'],reward:'maxhp',give:async()=>{party.forEach(m=>{m.max+=3;m.hp=m.max});await say('全隊最大體力提升 3 點！')},doneText:'這封回信終於送到了，謝謝你！'},rare:{title:'月光靈研究',offer:'研究員想確認月光靈是否真的存在，能帶回牠的圖鑑紀錄嗎？',progress:()=>`進度：捕獲月光靈（${dex.has('月光靈')?'已完成':'尚未完成'}）。`,done:()=>dex.has('月光靈'),reward:'heal',give:async()=>{party.forEach(m=>m.hp=m.max);await say('研究員替隊伍完全恢復了體力！')},doneText:'太棒了！月光靈的資料會成為重要研究成果！'},legend:{title:'傳說試煉',offer:'完成火山裂隙的探索，便能取得唯一的傳說捕獲飼料。要接受試煉嗎？',progress:()=>`進度：找到熔岩裂隙（${FL['secret:volc:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:volc:6:8'],give:async()=>{BAG.legendFeed=1;await say('獲得唯一的「傳說必捕飼料」！每次遊戲只能取得 1 枚。')},doneText:'你通過了傳說試煉！'}};
 const Pl={x:3,y:4,px:0,py:0,dir:'down',mv:false,prog:0,tx:0,ty:0};
 const S={mode:'title',t:0,msg:null,menu:null,prompt:''};let B=null,waitA=null;
 const held={};
@@ -125,7 +127,7 @@ const mon=(s,lv)=>{const p=ENEMIES[s],h=p.hp+lv*3;return{s,n:p.n,t:p.t,lv,max:h,
 const LEARN={3:4,5:5,7:6,9:8,11:9,13:7,15:10};
 const mk=(m,x,y,c,id,d,t,w,a,q,shop)=>({m,x,y,c,id,d,t,w,a,q,shop});
 const NPCS=[
- mk('town',7,5,1,0,['老豬：歡迎來到豬豬鎮！','東邊有一條通往道館的草原路。','等級到 5 以上再去挑戰館主吧。']),
+ mk('town',7,5,1,0,['老豬：歡迎來到豬豬鎮！','東邊的月影森林住著拜月狼，打倒牠才能通往水族城。','等級到 5 以上再去挑戰館主吧。']),
  mk('town',13,10,2,0,['村民：草叢裡的怪獸越來越兇。','在小屋睡覺還能記錄冒險喔！']),
  mk('town',2,13,1,'s0',['小豬郵差：我每天都在鎮裡送信！','聽說東南角的石板會在月光下發亮。']),
  mk('town',5,1,2,'shop',['豬豬雜貨店：歡迎來看看旅行用品！'],null,null,null,null,null,'store'),
@@ -166,6 +168,33 @@ function drawPuz(){R(0,0,160,144,0);box(2,2,156,140);T('星夢謎題',9,7,2,10);
 QUESTS.dream={title:'夢幻謎題',offer:'傳說中的「夢幻兔豬皇」只會回應有緣的訓練豬。先收集 10 隻圖鑑，再來解開星夢謎題吧！要接受嗎？',progress:()=>`進度：圖鑑登錄 10 隻（目前 ${dex.size}/10）。達成後再來找我解謎。`,done:()=>dex.size>=10,doneText:'圖鑑夠豐富了！那麼，開始星夢謎題吧！',
  give:async()=>{await say('把 9 顆星星全部點亮！\n（A 切換周圍　B 重新洗牌）');await puzzle();await say('星星全部亮了！粉紅的夢幻光芒灑落……');const m=mon(ULT,30);if(party.length<6){party.push(m);await say(`${m.n}加入了隊伍！`)}else{pcBox.push(m);await say('隊伍滿了，已傳送到電腦盒子！')}dex.add(m.n);FL['s'+ULT]=1;await say(`${m.n}登錄到圖鑑了！（${dex.size}/${ENEMIES.length}）`)}};
 NPCS.push(mk('town',11,13,3,'qdream',['夢幻研究員：傳說中的兔豬皇，只有解開星夢謎題的人才能見到。'],null,null,null,null,'dream'));
+/* ---- v3 world ---- */
+const PAL={town:P4.slice(),forest:['#e8e4ff','#a9a0e8','#5a4fb0','#1c1448'],route:['#e4f6ff','#8fd3ff','#2a7fd1','#0a2a5c'],school:['#fff8dc','#ffd98a','#d98a2a','#5a3412'],a2:['#f4ffe6','#b5ec8c','#4fae3c','#1c4a14'],a3:['#fffbd6','#ffe56a','#d9a400','#4a3a00'],a4:['#fff0e4','#ffb07a','#d9482a','#5a1408'],a5:['#f3ece0','#d2b48c','#8a6238','#3a2512'],a6:['#f6fcff','#cfeaf5','#86b4c9','#2c4456'],sea:['#e0fbff','#7fe0e8','#1a98b0','#083a4a'],volc:['#fff0e0','#ff9a5a','#c23a1a','#3a0a0a'],maze:['#f0e8ff','#c8a8ff','#7a4ad0','#2a1058']};
+const palOf=n=>PAL[n]||(/^g\d$/.test(n)&&PAL[GYMS[+n[1]].m])||PAL.town;
+const put=(n,c,pts)=>pts.forEach(([x,y])=>{const r=MAPS[n][y];MAPS[n][y]=r.slice(0,x)+c+r.slice(x+1)}),rect=(n,c,a,b,x,y)=>{for(let j=b;j<=y;j++)for(let i=a;i<=x;i++)put(n,c,[[i,j]])};
+MAPS.forest=Array.from({length:12},(_,y)=>Array.from({length:20},(_,x)=>(y%11===0||(x%19===0&&y!==6))?'#':(x===13&&y!==6)?'#':(y!==6&&y!==5&&(x*7+y*3)%5===0)?'#':(x<13&&(x*5+y*3)%7<3)?'g':'.').join(''));
+Object.assign(WARP,{'town,19,14':['forest',1,6],'forest,0,6':['town',18,14],'forest,19,6':['route',1,6],'route,0,6':['forest',18,6]});
+rect('route','w',2,10,4,10);rect('route','w',15,8,17,9);rect('a2','f',2,8,6,9);rect('a2','f',12,8,17,9);rect('a2','w',8,9,11,10);rect('school','f',2,9,4,10);rect('school','f',14,9,17,10);
+put('a3','r',[[3,8],[4,9],[16,8],[15,10],[10,9]]);rect('a4','L',3,8,6,9);rect('a4','L',14,9,17,9);rect('a5','r',2,8,5,8);rect('a5','r',13,9,17,9);rect('a6','w',3,8,7,10);rect('a6','w',13,8,16,9);
+const wolfTile=(x,y)=>{R(x+2,y+2,3,4,3);R(x+11,y+2,3,4,3);ell(x+8,y+9,7,6,3);ell(x+8,y+9,6,5,1);R(x+4,y+7,2,2,3);R(x+10,y+7,2,2,3);R(x+7,y+10,2,2,3);R(x+6,y,4,2,2)};
+const moonWolf=(cx,cy)=>{wolf(cx,cy);ell(cx+14,cy-22,5,5,2);ell(cx+16,cy-23,4,4,0)};
+const wolfD=['拜月狼：嗷嗚——月光下的森林，只有我這一隻！','想通過這裡，先打倒我！'];
+NPCS.push(Object.assign(mk('forest',13,6,3,'wolf',wolfD,{n:'拜月狼',lv:5,b:{n:'拜月狼',hp:28,atk:5,d:moonWolf}},['拜月狼：嗚……月光認可你了。','森林的出口開啟了！'],wolfD[0]),{sp:wolfTile,hide:1}));
+ENEMIES.push({n:'鈺兔兔',t:'光',m:30,hp:60,atk:11,d:cuteSp(true,1,true)});
+MOVES.push({n:'撒嬌連環砲',p:28,a:.95,y:'光'},{n:'蘿蔔雨啪啦',p:30,a:.95,y:'草'},{n:'耍廢打滾擊',p:38,a:.9,y:'普'});SPECIES_MOVES[108]=[0,26,27,28];
+const SQ=[['水系怪物最怕哪個屬性？',['火','電','暗'],1],['兔子的長耳朵有什麼用？',['散熱聽遠處','能飛行','變蘿蔔'],0],['光屬性對誰效果絕佳？',['火','冰','暗'],2]];
+async function teach(){S.mode='event';if(FL.yu){await say('老師：你是班上的第一名！鈺兔兔就拜託你照顧囉。');return}
+ await say('老師：我要出三題！答案都藏在三位同學的話裡，去問問他們吧。');
+ for(const[q,o,a]of SQ){await say('老師：'+q);S.prompt='請選擇\n答案';if(await choose(o,1,'right')!==a){await say('老師：不對喔，再去聽聽同學怎麼說！');return}await say('老師：答對了！')}
+ FL.yu=1;await say('三題全對！老師送你一位特別的同學——');const m=mon(108,16);if(party.length<6){party.push(m);await say('鈺兔兔加入了隊伍！')}else{pcBox.push(m);await say('隊伍滿了，已傳送到電腦盒子！')}
+ dex.add(m.n);FL['s108']=1;await say(`獲得隱藏怪物「鈺兔兔」！圖鑑登錄！（${dex.size}/${ENEMIES.length}）`)}
+[[5,8,'小米','水系怪物最怕電屬性，被電到會麻麻的！'],[9,8,'阿福','兔子的長耳朵可以散熱，也能聽見很遠的聲音。'],[13,8,'小綠','光屬性最會對付暗屬性，暗系怪物都怕它！']].forEach(([x,y,n,t],i)=>{put('school','.',[[x,y]]);NPCS.push(mk('school',x,y,i+1,'st'+i,[`學生${n}：我來分享一個知識！`,t]))});
+put('school','.',[[9,5]]);NPCS.push(Object.assign(mk('school',9,5,3,'teacher',['老師：…']),{fn:teach}));
+const EGG=[['forest',15,9,3,9,'月影森林','森林守護者：月亮最亮的夜晚，蘑菇會發光。能幫我找到「月光蘑菇」嗎？','月光蘑菇'],['route',3,5,17,10,'藍濱水族城','館員：水槽裡的小魚唱歌時掉了顆「珍珠貝殼」，能幫我找嗎？','珍珠貝殼'],['school',3,5,16,10,'星學堂','校工：操場角落埋著一枚「星星獎章」，能幫我挖出來嗎？','星星獎章'],['a2',3,5,16,10,'花語城','花園婆婆：花叢深處有一朵會發光的「發光花苞」。','發光花苞'],['a3',3,5,16,10,'雷鳴城','電工：我的「備用電池」掉在城裡的角落了。','備用電池'],['a4',3,5,16,10,'烈焰城','鐵匠：我的「火種寶石」弄丟了，就在城裡某處。','火種寶石'],['a5',3,5,16,10,'礦石城','礦工：我在岩縫間藏了一顆「彩虹礦石」。','彩虹礦石'],['a6',3,5,16,10,'冰晶城','雪人：我的「冰藍圍巾」被風吹到角落去了。','冰藍圍巾']];
+EGG.forEach(([m,nx,ny,ex,ey,cn,offer,item],i)=>{const k=`secret:${m}:${ex}:${ey}`;put(m,'.',[[nx,ny]]);put(m,'E',[[ex,ey]]);
+ SECRETS[k]={title:item,lines:[`你在${cn}找到了「${item}」！`,'它閃閃發光，帶來好運！'],reward:['maxhp','exp','heal','exp','maxhp','heal','exp','maxhp'][i]};
+ QUESTS['e'+m]={title:cn+'彩蛋',offer,progress:()=>`進度：找到「${item}」（${FL[k]?'已完成':'尚未完成'}）。`,done:()=>!!FL[k],give:async()=>{BAG.coins+=150;await say('獲得 150 枚金幣！')},doneText:'太感謝了！這是謝禮！'};
+ NPCS.push(mk(m,nx,ny,2,'qe'+m,['居民：…'],null,null,null,null,'e'+m))});
 async function center(h){
  S.mode='event';await say(h?'豬媳媳：歡迎回家！':'豬豬中心：歡迎光臨！');party.forEach(m=>m.hp=m.max);await say('已經幫你的隊伍全部回復了體力！');
  for(;;){S.prompt='還需要\n什麼服務？';const c=await choose(['電腦','存檔','離開'],1,'right');if(c===0)await pc();else if(c===1)await say(save()?'冒險已經記錄下來了！':'無法存檔……');else break}
@@ -197,7 +226,7 @@ const openView=k=>new Promise(r=>{S.mode='view';S.vk=k;S.vi=0;S.vr=r}),dexView=(
 function drawView(){
  R(0,0,160,144,0);box(2,2,156,140);const i=S.vi;
  if(S.vk==='quest'){
-  T('支線任務',9,8,2,11);let y=28;Object.entries(QUESTS).forEach(([id,q])=>{const st=FL['q:'+id];T((st==='done'?'✓ ':st==='active'?'▶ ':'○ ')+q.title,9,y,st==='done'?1:3,8);T(st==='done'?'已完成':st==='active'?'進行中':'未接取',105,y,2,7);y+=18});T('在城鎮公告板接取任務',9,118,2,8);T('B 關閉',9,131,2,8);
+  T('支線任務',9,8,2,11);T(`${i+1}/${Math.ceil(Object.keys(QUESTS).length/5)}`,130,8,2,8);let y=28;Object.entries(QUESTS).slice(i*5,i*5+5).forEach(([id,q])=>{const st=FL['q:'+id];T((st==='done'?'✓ ':st==='active'?'▶ ':'○ ')+q.title,9,y,st==='done'?1:3,8);T(st==='done'?'已完成':st==='active'?'進行中':'未接取',105,y,2,7);y+=18});T('在城鎮公告板接取任務',9,118,2,8);
  }else if(S.vk==='dex'){
   const p=ENEMIES[i],c=dex.has(p.n),s=c||FL['s'+i];
   T(`圖鑑 ${i+1}/${ENEMIES.length}`,9,7,2,9);T(`已捕抓 ${ENEMIES.filter(q=>dex.has(q.n)).length}`,100,7,2,9);
@@ -220,7 +249,7 @@ async function swap(forced){
  if(m.hp<=0){await say('它已經沒力了！');return 0}
  pig=m;pig.dh=pig.hp;await say(`上吧，${pig.n}！`);return 1;
 }
-const npcAt=(x,y)=>NPCS.find(n=>n.m===cur&&n.x===x&&n.y===y);
+const npcAt=(x,y)=>NPCS.find(n=>n.m===cur&&n.x===x&&n.y===y&&!(n.hide&&FL[n.id]));
 function npcSprite(x,y,c){R(x+4,y+8,8,7,3);R(x+5,y+9,6,5,c);ell(x+8,y+5,4,4,3);ell(x+8,y+5,3,3,0);R(x+6,y+4,1,1,3);R(x+9,y+4,1,1,3);R(x+4,y+1,8,2,3)}
 const SK='pigmon1';
 const has=()=>{try{return !!localStorage.getItem(SK)}catch(e){return false}};
@@ -231,7 +260,7 @@ async function shopTalk(){S.mode='event';for(;;){S.prompt=`豬豬雜貨店\n金�
 async function questTalk(N){const q=QUESTS[N.q];S.mode='event';const key='q:'+N.q;if(!q){S.mode='map';return}if(!FL[key]){await say(q.offer);if(await choose(['接受任務','先等等'],1,'right')===0){FL[key]='active';await say('任務已加入！可以按 B 開啟任務查看進度。')}}else if(FL[key]==='active'){if(q.done()){FL[key]='done';await say(q.doneText);await q.give();await say('支線任務完成！')}else await say(q.progress())}else await say('這項任務已經完成了，謝謝你的幫忙！');S.mode='map'}
 async function talk(N){
  S.mode='event';
- if(N.shop){await shopTalk();return}if(N.q){await questTalk(N);return}
+ if(N.fn){await N.fn();S.mode='map';return}if(N.shop){await shopTalk();return}if(N.q){await questTalk(N);return}
  if(N.t&&!FL[N.id]){
   for(const s of N.d)await say(s);
   const w=await battle(N.t);
@@ -253,7 +282,7 @@ function choose(o,c,boxType,cancel){return new Promise(r=>{S.menu={o,c,box:boxTy
 function press(k){
  if(S.mode==='title'){if(k==='a')start();return}
  if(S.mode==='puzzle'){const p=PZ;if(k==='left'&&p.c%3)p.c--;if(k==='right'&&p.c%3<2)p.c++;if(k==='up'&&p.c>2)p.c-=3;if(k==='down'&&p.c<6)p.c+=3;if(k==='a'){pzTog(p.g,p.c);p.n++;if(p.g.every(v=>v)){S.mode='event';p.r()}}if(k==='b'){p.g=pzNew();p.n=0}return}
- if(S.mode==='view'){if(S.vk==='quest'){if(k==='b'){S.mode='event';S.vr()}return}const n=S.vk==='dex'?ENEMIES.length:party.length+pcBox.length;if(k==='left')S.vi=(S.vi+n-1)%n;if(k==='right'||k==='a')S.vi=(S.vi+1)%n;if(k==='b'){S.mode='event';S.vr()}return}
+ if(S.mode==='view'){if(S.vk==='quest'){const np=Math.ceil(Object.keys(QUESTS).length/5);if(k==='right')S.vi=(S.vi+1)%np;if(k==='left')S.vi=(S.vi+np-1)%np;if(k==='b'){S.mode='event';S.vr()}return}const n=S.vk==='dex'?ENEMIES.length:party.length+pcBox.length;if(k==='left')S.vi=(S.vi+n-1)%n;if(k==='right'||k==='a')S.vi=(S.vi+1)%n;if(k==='b'){S.mode='event';S.vr()}return}
  if(S.msg){if(k==='a'||k==='b'){const m=S.msg;if(m.shown<m.n)m.shown=m.n;else{S.msg=null;const r=waitA;waitA=null;r&&r()}}return}
  const m=S.menu;if(!m){if(k==='a'&&S.mode==='map'&&!Pl.mv){const N=npcAt(Pl.x+D[Pl.dir][0],Pl.y+D[Pl.dir][1]);if(N)talk(N);else surfTry()}if(k==='b'&&S.mode==='map'&&!Pl.mv)field();return}const n=m.o.length,c=m.c;
  if(k==='up'&&m.i>=c)m.i-=c;if(k==='down'&&m.i+c<n)m.i+=c;
@@ -267,15 +296,15 @@ async function start(){if(has()){S.mode='event';S.prompt='要繼續\n冒險嗎�
  await say('用方向鍵移動。草叢裡會遇到野生怪獸。面對路人按 A 可以對話。');await say('用飼料收服怪獸，組成六隻隊伍！注意屬性相剋，打贏七個道館，還有 7 隻傳說怪物等著你挑戰！');
  S.mode='map';
 }
-function walk(x,y){return x>=0&&y>=0&&x<MW&&y<MH&&!(surf?'#HL':'#HLw').includes(MAP[y][x])&&!npcAt(x,y)}
+function walk(x,y){return x>=0&&y>=0&&x<MW&&y<MH&&!(surf?'#HLr':'#HLrw').includes(MAP[y][x])&&!npcAt(x,y)}
 async function arrive(){
  if(S.mode!=='map')return;const c=MAP[Pl.y][Pl.x],wk=WARP[`${cur},${Pl.x},${Pl.y}`];if(wk){setMap(wk[0]);Pl.x=wk[1];Pl.y=wk[2];return}if(surf&&c!=='w')surf=false;if(BAG.repel>0)BAG.repel--;
  if(c==='E'){const sk=`secret:${cur}:${Pl.x}:${Pl.y}`,q=SECRETS[sk];if(q&&!FL[sk]){S.mode='event';for(const line of q.lines)await say(line);FL[sk]=1;if(q.reward==='maxhp'){pig.max+=6;pig.hp=pig.max;await say('小豬的最大體力提升 6 點！')}if(q.reward==='exp'){pig.exp+=12;await say('小豬獲得了 12 點探索經驗！')}if(q.reward==='heal'){party.forEach(m=>m.hp=m.max);await say('隊伍全員恢復體力！')}if(q.reward==='rare'){FL.rare=1;await say('稀有怪物的出現率提高了！')}S.mode='map';return}}if(c==='h'||c==='C'){center(c==='h');return}if(c==='X'&&hasLegendLeft()){legend2();return}if(0){S.mode='event';await say('這是豬窩小屋。豬媽媽在等你回家。');party.forEach(m=>m.hp=m.max);await say('小豬睡了一覺，體力全部恢復了！');S.prompt='要記錄\n冒險嗎？';if(await choose(['存檔','不用'],1,'right')===0)await say(save()?'冒險已經記錄下來了！':'無法存檔……');S.mode='map'}
  else if(BAG.repel<=0&&(c==='g'||c==='w'||(cur==='maze'&&c==='.'))&&Math.random()<(c==='.'?.07:.14))battle(0,c==='w');
 }
 const wildPool0=()=>cur==='sea'?[ENEMIES[3],ENEMIES[6],ENEMIES[8],ENEMIES[10]]:cur==='volc'?[ENEMIES[4],ENEMIES[5],ENEMIES[9],ENEMIES[8]]:cur==='maze'?[ENEMIES[0],ENEMIES[8],ENEMIES[9],ENEMIES[11]]:cur==='a3'?[ENEMIES[2],ENEMIES[6],ENEMIES[10],ENEMIES[11]]:(FL.rare?[...ENEMIES.slice(0,6),ENEMIES[9],ENEMIES[11]]:ENEMIES.slice(0,6));
-const ALLN=[...Array(49).keys()].map(i=>i+12).concat(NEWN.map((_,i)=>65+i)),AOFF={route:0,a2:14,a3:28,a4:42,sea:55,volc:68,maze:71};
-const wildPool=()=>{const o=AOFF[cur]??0,rare=FL.rare||o>50;return [...wildPool0(),...ALLN.slice(o,o+18).filter(i=>i<95||rare).map(i=>ENEMIES[i])]};
+const ALLN=[...Array(49).keys()].map(i=>i+12).concat(NEWN.map((_,i)=>65+i)),AOFF={forest:0,route:8,school:0,a2:16,a3:26,a4:36,a5:46,a6:56,sea:62,volc:68,maze:71};
+const wildPool=()=>{const o=AOFF[cur]??0,rare=FL.rare||o>50;return [...(cur==='route'?[ENEMIES[3],ENEMIES[6]]:wildPool0()),...ALLN.slice(o,o+18).filter(i=>i<95||rare).map(i=>ENEMIES[i])]};
 async function battle(T,W,L){
  S.mode='trans';S.t0=performance.now();await sleep(800);
  const lv=L?28:T?T.lv:Math.max(1,pig.lv+rnd(-1,1)),b=L?ENEMIES[legendTarget()]:T?T.b:pick(W?[ENEMIES[3],ENEMIES[6]]:wildPool());
@@ -330,6 +359,8 @@ async function gain(E){
 async function blink(w){B.bl=w;await sleep(500);B.bl=null}
 /* ---------- drawing ---------- */
 function tile(c,x,y,sx,sy){
+ if(c==='f'){R(sx,sy,16,16,0);R(sx+6,sy+6,4,4,2);R(sx+7,sy+3,2,3,1);R(sx+7,sy+10,2,3,1);R(sx+3,sy+7,3,2,1);R(sx+10,sy+7,3,2,1);R(sx+7,sy+7,2,2,3);return}
+ if(c==='r'){R(sx,sy,16,16,0);ell(sx+8,sy+9,7,6,3);ell(sx+8,sy+9,6,5,2);R(sx+4,sy+6,4,2,1);return}
  if(c==='#'){R(sx,sy,16,16,0);ell(sx+8,sy+8,7,7,3);ell(sx+8,sy+7,5,5,2);R(sx+7,sy+12,2,4,3);return}
  if(c==='g'){R(sx,sy,16,16,1);for(let i=0;i<4;i++){R(sx+2+i*4,sy+4+(i%2)*5,1,5,2);R(sx+3+i*4,sy+6+(i%2)*5,1,3,2)}return}
  if(c==='w'){R(sx,sy,16,16,2);const o=(S.t>>4&1)*3;R(sx+2+o,sy+4,6,1,1);R(sx+7-o,sy+11,6,1,1);return}
@@ -346,7 +377,7 @@ function drawMap(){
  const px=Pl.x*16+(Pl.mv?D[Pl.dir][0]*Pl.prog:0),py=Pl.y*16+(Pl.mv?D[Pl.dir][1]*Pl.prog:0);
  const cx=Math.max(0,Math.min(MW*16-160,px-72)),cy=Math.max(0,Math.min(MH*16-144,py-64));
  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const sx=x*16-cx,sy=y*16-cy;if(sx>-16&&sx<160&&sy>-16&&sy<144)tile(MAP[y][x],x,y,sx,sy)}
- NPCS.forEach(n=>{if(n.m===cur)npcSprite(n.x*16-cx,n.y*16-cy,n.c)});const f=Pl.mv?(Pl.prog>>3)&1:0;if(surf)ell(px-cx+8,py-cy+14,9,3,3);pigMap(px-cx,py-cy-(Pl.mv&&f?1:0),Pl.dir,f);
+ NPCS.forEach(n=>{if(n.m===cur&&!(n.hide&&FL[n.id]))(n.sp||npcSprite)(n.x*16-cx,n.y*16-cy,n.c)});const f=Pl.mv?(Pl.prog>>3)&1:0;if(surf)ell(px-cx+8,py-cy+14,9,3,3);pigMap(px-cx,py-cy-(Pl.mv&&f?1:0),Pl.dir,f);
  R(0,0,160,12,0);R(0,12,160,1,3);T(`Lv${pig.lv}  HP ${pig.hp}/${pig.max}`,3,1,3,8);T(`${nb()?'★'+nb()+' ':''}圖鑑 ${dex.size}/${ENEMIES.length}`,92,0,3,8);T(`$${BAG.coins}`,3,12,2,7);
 }
 function hpbar(x,y,w,r){T('HP',x,y-2,3,7);R(x+12,y,w,5,3);R(x+13,y+1,w-2,3,0);R(x+13,y+1,Math.round((w-2)*Math.max(0,r)),3,r>.25?2:3)}
@@ -396,6 +427,7 @@ function tick(){
  }
  MU.sync();draw();requestAnimationFrame(tick);
 }
+const mapId=()=>cur;
 /* ---- chiptune BGM ---- */
 const MU=(()=>{let ac,g,cur='',step=0,next=0,on=true,btn;try{on=localStorage.getItem('pigmon_mute')!=='1'}catch(e){}
 const mf=n=>440*2**((n-69)/12),rp=(cs,pt)=>cs.flatMap(r=>pt.map(x=>x===null?0:r+x));
@@ -403,6 +435,19 @@ const TR={
  t:{bpm:132,lt:'square',lv:.045,lead:[76,0,72,76,79,0,76,72,77,0,72,77,81,0,77,72,79,0,74,79,83,0,79,74,76,74,72,0,67,0,72,0,81,0,76,81,84,0,81,76,77,0,74,77,81,77,74,0,79,77,76,74,72,74,76,0,72,0,76,0,79,0,0,0],bass:rp([48,53,55,48,45,53,55,48],[0,null,7,null,0,null,7,null])},
  b:{bpm:150,lt:'square',lv:.05,lead:[81,0,81,84,81,0,79,76,77,0,77,81,77,0,76,72,79,0,79,83,79,0,77,74,76,0,80,83,88,0,83,80],bass:rp([45,41,43,40],[0,0,12,0,0,0,12,0])},
  p:{bpm:96,lt:'triangle',lv:.07,lead:rp([48,53,55,48,48,53,55,48],[24,28,31,28,24,28,31,28]),bass:rp([48,53,55,48,48,53,55,48],[0,null,null,null,7,null,null,null])}};
+const T2=(bpm,lt,lv,root,str,ch,bp)=>({bpm,lt,lv,lead:str.replace(/\|/g,' ').split(/\s+/).filter(Boolean).map(x=>x==='.'?0:root+ +x),bass:rp(ch.map(c=>root-24+c),bp)});
+const SB=[0,null,null,null,7,null,null,null],AB=[0,null,7,null,0,null,7,null];
+TR.forest=T2(100,'triangle',.07,69,'0 . 3 . 7 . 3 . | -4 . 0 . 3 . 0 . | -2 . 2 . 5 . 2 . | -5 . -1 . 2 . -1 .',[0,-4,-2,-5],SB);
+TR.route=T2(112,'square',.035,72,'0 4 7 12 7 4 7 4 | 5 9 12 17 12 9 12 9 | 7 11 14 19 14 11 14 11 | 0 4 7 12 7 4 7 .',[0,5,7,0],AB);
+TR.school=T2(126,'square',.045,67,'0 . 4 . 7 . 4 . | 5 . 9 . 12 . 9 . | 7 . 11 . 14 . 11 . | 0 4 7 4 0 . . .',[0,5,7,0],AB);
+TR.a2=T2(104,'triangle',.08,65,'0 4 7 . 9 7 4 . | 5 9 12 . 14 12 9 . | 7 11 14 . 16 14 11 . | 0 4 7 12 . . . .',[0,5,7,0],AB);
+TR.a3=T2(160,'square',.045,64,'0 0 12 . 7 . 12 7 | 5 5 17 . 12 . 17 12 | 7 7 19 . 14 . 19 14 | 0 12 7 12 0 . . .',[0,5,7,0],[0,0,12,0,0,0,12,0]);
+TR.a4=T2(144,'square',.05,62,'0 . 3 5 7 . 5 3 | -4 . 0 3 5 . 3 0 | -2 . 2 5 7 . 5 2 | 0 3 7 10 12 . 10 7',[0,-4,-2,0],[0,0,0,null,7,null,0,null]);
+TR.a5=T2(92,'square',.05,60,'0 . . 3 . . 7 . | -2 . . 2 . . 5 . | -4 . . 0 . . 3 . | -5 . . -1 . . 2 .',[0,-2,-4,-5],[0,null,null,0,null,null,7,null]);
+TR.a6=T2(88,'triangle',.07,79,'0 . . 7 . . 12 . | 2 . . 9 . . 14 . | 4 . . 11 . . 16 . | 0 . 7 . 12 . . .',[0,2,4,0],SB);
+TR.sea=T2(108,'triangle',.075,67,'0 4 7 4 0 4 7 4 | -3 0 4 0 -3 0 4 0 | -5 -1 2 -1 -5 -1 2 -1 | 0 4 7 4 0 . . .',[0,-3,-5,0],AB);
+TR.volc=T2(132,'square',.05,57,'0 0 . 3 0 . 5 3 | 0 0 . 3 0 . 7 5 | -2 -2 . 1 -2 . 3 1 | -5 -5 . -2 -5 . 0 -2',[0,0,-2,-5],[0,0,0,0,7,0,0,0]);
+TR.maze=T2(84,'triangle',.08,66,'0 . 1 . 0 . -1 . | 3 . 4 . 3 . 2 . | 0 . 1 . 6 . 5 . | -1 . 0 . -1 . . .',[0,3,0,-1],[0,null,null,null,null,null,6,null]);
 function note(t,n,d,ty,v){const o=ac.createOscillator(),e=ac.createGain();o.type=ty;o.frequency.value=mf(n);e.gain.setValueAtTime(v,t);e.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(e);e.connect(g);o.start(t);o.stop(t+d+.02)}
 function pump(){if(!ac||ac.state!=='running')return;const T=TR[cur];if(!T)return;const d=30/T.bpm;if(next<ac.currentTime)next=ac.currentTime+.05;
  while(next<ac.currentTime+.2){const L=T.lead[step%T.lead.length],B=T.bass[step%T.bass.length];if(L)note(next,L,d*1.7,T.lt,T.lv);if(B)note(next,B,d*2.2,'triangle',.1);step++;next+=d}}
@@ -413,7 +458,7 @@ function toggle(){if(!ac||ac.state!=='running'){init();lab();return}on=!on;if(g)
 ['keydown','pointerdown','pointerup','touchend','click'].forEach(t=>addEventListener(t,init,{capture:true,passive:true}));
 addEventListener('keydown',e=>{if(e.key==='m'||e.key==='M')toggle()});
 document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume()});
-return{sync(){const w=S.mode==='battle'?'b':S.mode==='puzzle'?'p':S.mode==='trans'?(cur||'t'):'t';if(w!==cur){cur=w;step=0;next=0}},bind(b){btn=b;lab();b.addEventListener('click',toggle)}}})();
+return{sync(){const m=mapId(),k=/^g\d$/.test(m)?GYMS[+m[1]].m:m,w=S.mode==='battle'?'b':S.mode==='puzzle'?'p':S.mode==='trans'?(cur||'t'):(TR[k]?k:'t');if(w!==cur){cur=w;step=0;next=0}},bind(b){btn=b;lab();b.addEventListener('click',toggle)}}})();
 /* ---------- input ---------- */
 const KEYS={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',z:'a',' ':'a',Enter:'a',x:'b',Escape:'b',Backspace:'b'};
 addEventListener('keydown',e=>{const k=KEYS[e.key.length>1?e.key:e.key.toLowerCase()];if(!k)return;e.preventDefault();held[k]=true;if(!e.repeat)press(k)});
