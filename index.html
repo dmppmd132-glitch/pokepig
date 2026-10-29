@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>豬豬小可愛*粉紅</title>
+<style>
+:root{--bg:#ffd9e8;--fg:#6b1d42;--shell:#fbe3ec;--btn:#d9588a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a1220;--fg:#ffd0e2;--shell:#3a2430;--btn:#d9588a}}
+:root[data-theme="dark"]{--bg:#2a1220;--fg:#ffd0e2;--shell:#3a2430;--btn:#d9588a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif;display:flex;flex-direction:column;align-items:center;padding:12px;gap:10px}
+.shell{background:var(--shell);border-radius:14px 14px 44px 14px;padding:14px;width:100%;max-width:440px;box-sizing:border-box;box-shadow:0 4px 14px #0004}
+canvas{width:100%;display:block;border:5px solid #4a4a52;border-radius:6px;background:#fff0f6;touch-action:none}
+#pad{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:0 4px;user-select:none;-webkit-user-select:none}
+.dp{display:grid;grid-template:repeat(3,48px)/repeat(3,48px);gap:0}
+.dp button{background:#333;color:#ddd;border:0;font-size:16px;touch-action:none}
+.dp .u{grid-area:1/2}.dp .l{grid-area:2/1}.dp .r{grid-area:2/3}.dp .d{grid-area:3/2}.dp i{grid-area:2/2;background:#333}
+.ab{display:flex;gap:14px;transform:rotate(-18deg)}
+.ab button{width:56px;height:56px;border-radius:50%;border:0;background:var(--btn);color:#fff;font-weight:700;font-size:18px;box-shadow:0 3px #0005;touch-action:none}
+p{margin:0;font-size:13px;opacity:.8;text-align:center;max-width:440px}
+</style></head><body>
+<div class="shell">
+<canvas id="c" width="480" height="432"></canvas>
+<div id="pad">
+<div class="dp"><button class="u" data-k="up">▲</button><button class="l" data-k="left">◀</button><i></i><button class="r" data-k="right">▶</button><button class="d" data-k="down">▼</button></div>
+<div class="ab"><button data-k="b">B</button><button data-k="a">A</button></div>
+</div></div>
+<p>方向鍵／WASD 移動　Z／空白鍵＝A（確認）　X＝B（返回）</p>
+<script>
+const P4=['#fff0f6','#ffb3cf','#d9588a','#5a1233'];
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const FONT="'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif";
+const R=(x,y,w,h,c)=>{ctx.fillStyle=P4[c];ctx.fillRect(x,y,w,h)};
+const ell=(cx,cy,rx,ry,c)=>{for(let dy=-ry;dy<=ry;dy++){const w=Math.round(rx*Math.sqrt(1-dy*dy/(ry*ry+.01)));R(cx-w,cy+dy,2*w+1,1,c)}};
+const T=(s,x,y,c=3,z=10)=>{ctx.font=z+'px '+FONT;ctx.textBaseline='top';ctx.fillStyle=P4[c];ctx.fillText(s,x,y)};
+const fitText=(s,max,z=10)=>{ctx.font=z+'px '+FONT;let t=String(s);while(t.length&&ctx.measureText(t).width>max)t=t.slice(0,-1);return t.length<String(s).length&&t.length>1?t.slice(0,-1)+'…':t};
+const box=(x,y,w,h)=>{R(x,y,w,h,3);R(x+1,y+1,w-2,h-2,2);R(x+2,y+2,w-4,h-4,0)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[rnd(0,a.length-1)];
+const TOWN=["####################","#..................#","#.HHH....gggggg....#","#.HhH....gggggg..w.#","#........gggggg..ww#","#..........gg.....w#","#.....##...gg......#","#.....##...........#","#..gggg.......gggg.#","#..gggg.......gggg.#","#..gggg....##..gg..#","#..........##.....w#","#.....gggg.........#","#.....gggg.....ww..#","#..................#","####################"];
+const D={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+TOWN[14]=TOWN[14].slice(0,19)+'.';
+TOWN[12]=TOWN[12].slice(0,16)+'E'+TOWN[12].slice(17);
+const ROUTE=["####################","#gggg.....ggg......#","#gggg.....ggg.HHH..#","#gggg.....ggg.HGH..#","#.............gg...#","#..................#","...........ww......#","#gggg......ww.gggg.#","#gggg.........gggg.#","#gggg..............#","#..................#","####################"];
+const GYM=["HHHHHHHHHH","H........H","H........H","H........H","H........H","H........H","H........H","H........H","HHHHGHHHHH"];
+const MAPS={town:TOWN,route:ROUTE,gym:GYM};
+const WARP={'town,19,14':['route',1,6],'route,0,6':['town',18,14],'route,15,3':['gym',4,7],'gym,4,8':['route',15,4]};
+let MAP=TOWN,MW=20,MH=16,cur='town';
+function setMap(n){cur=n;FL['v'+n]=1;MAP=MAPS[n];MW=MAP[0].length;MH=MAP.length}
+const gen=(n,xs,last)=>{const r=[];for(let y=0;y<12;y++){let s='';for(let x=0;x<20;x++){const b=xs.find(a=>x>=a&&x<a+3)||(x>=8&&x<11?8:0);s+=(y%11===0||x%19===0)&&!(y===6&&(x===0||(x===19&&!last)))?'#':y===2&&b?'H':y===3&&b?(x===b+1?(b===8?'C':'G'):'H'):y>6&&(x*3+y*5+n*7)%9<3?'g':'.'}r.push(s)}return r};
+MAPS.a2=gen(2,[4,13]);MAPS.a3=gen(3,[4,13]);MAPS.a4=gen(4,[13]);
+ROUTE[2]=ROUTE[2].slice(0,6)+'HHH'+ROUTE[2].slice(9);ROUTE[3]=ROUTE[3].slice(0,6)+'HCH'+ROUTE[3].slice(9);
+const SEA=[],VOL=[];
+for(let y=0;y<14;y++){let s='',v='';for(let x=0;x<20;x++){let c='w';
+ if(y%13===0||x===19||(x===0&&y!==6))c='#';else if(x<4||(x>=12&&x<=17&&y>=2&&y<=6)||(x>=8&&x<=12&&y>=9&&y<=12))c='.';
+ if(y===3&&x>=14&&x<=16)c='H';if(y===4&&x>=14&&x<=16)c=x===15?'G':'H';if(x===10&&y===10)c='V';s+=c;
+ v+=(y%13===0||x%19===0)&&!(y===6&&(x===0||x===19))?'#':y!==6&&y!==5&&(x*5+y*3)%7<2?'L':y>7&&(x+y*2)%6<2?'g':'.'}SEA.push(s);VOL.push(v)}
+function mz(w,h,sd){let s=sd;const r=()=>(s=(Math.imul(s,1103515245)+12345)&0x7fffffff)/0x80000000,g=[];for(let y=0;y<h;y++)g.push(Array(w).fill('#'));g[1][1]='.';const st=[[1,1]];
+ while(st.length){const[x,y]=st[st.length-1],d=[[2,0],[-2,0],[0,2],[0,-2]].filter(([a,b])=>x+a>0&&x+a<w-1&&y+b>0&&y+b<h-1&&g[y+b][x+a]==='#');
+  if(!d.length){st.pop();continue}const[a,b]=d[Math.floor(r()*d.length)];g[y+b/2][x+a/2]='.';g[y+b][x+a]='.';st.push([x+a,y+b])}
+ g[1][0]='.';g[h-2][w-2]='X';return g.map(q=>q.join(''))}
+MAPS.sea=SEA;MAPS.volc=VOL;MAPS.maze=mz(21,15,7);
+SEA[8]=SEA[8].slice(0,6)+'E'+SEA[8].slice(7);
+VOL[8]=VOL[8].slice(0,6)+'E'+VOL[8].slice(7);
+const SECRETS={'secret:town:16:12':{title:'星糖石板',lines:['石板忽然亮了起來，粉紅色的星光落在小豬身上！','小豬獲得隱藏祝福：最大體力提升 6 點！'],reward:'maxhp'},'secret:route:4:5':{title:'草叢郵筒',lines:['草叢裡藏著一個古老郵筒。','裡面有一封寫給勇者的信：前方的怪物會使用新招式！'],reward:'exp'},'secret:sea:6:8':{title:'漂流瓶',lines:['小豬撿到了一個漂流瓶。','瓶中藏著冰藍色的糖果，隊伍全員恢復體力！'],reward:'heal'},'secret:volc:6:8':{title:'熔岩裂隙',lines:['裂隙深處傳來低沉的咆哮……','小豬找到稀有怪物的氣息，接下來更容易遇到牠們！'],reward:'rare'}};
+WARP['a4,19,6']=['sea',1,6];WARP['sea,0,6']=['a4',18,6];WARP['sea,10,10']=['volc',2,6];WARP['volc,0,6']=['sea',10,11];WARP['volc,19,6']=['maze',1,1];WARP['maze,0,1']=['volc',18,6];
+const FLY=[['town','豬豬鎮',3,4],['route','草原路',7,4],['a2','綠野城',9,4],['a3','雷鳴城',9,4],['a4','港口城',9,4]];
+ROUTE[6]=ROUTE[6].slice(0,19)+'.';
+ROUTE[5]=ROUTE[5].slice(0,4)+'E'+ROUTE[5].slice(5);
+const AR=['route','a2','a3','a4'];
+AR.forEach((a,i)=>{if(i)WARP[a+',0,6']=[AR[i-1],18,6];if(i<3)WARP[a+',19,6']=[AR[i+1],1,6]});
+const GYMS=[{m:'route',x:15,y:3,s:3,lv:6},{m:'a2',x:5,y:3,s:1,lv:9},{m:'a2',x:14,y:3,s:4,lv:12},{m:'a3',x:5,y:3,s:2,lv:15},{m:'a3',x:14,y:3,s:5,lv:18},{m:'a4',x:14,y:3,s:0,lv:22},{m:'sea',x:15,y:4,s:6,lv:26}];
+GYMS.forEach((g,i)=>{MAPS['g'+i]=GYM;WARP[`${g.m},${g.x},${g.y}`]=['g'+i,4,7];WARP[`g${i},4,8`]=[g.m,g.x,g.y+1]});
+const party=[{n:'小豬',t:'普',lv:1,max:30,hp:30,exp:0,dh:30,mv:[0,1,2,3]}];let pig=party[0];const dex=new Set(),FL={vtown:1},pcBox=[];let surf=false;
+const BAG={coins:500,feed:3,superFeed:0,legendFeed:0,rep100:0,rep200:0,rep400:0,repel:0};
+const QUESTS={patrol:{title:'草原巡查',offer:'草原路最近出現了許多野生怪物，願意去巡查一次嗎？',progress:()=>`進度：前往草原路並完成 1 場戰鬥（目前 ${FL.wins||0}/1）。`,done:()=>!!FL.vroute&&(FL.wins||0)>=1,reward:'exp',give:async()=>{pig.exp+=18;await say('獲得 18 點經驗值！')},doneText:'太好了，草原路已經安全多了！'},bottle:{title:'漂流瓶的回信',offer:'港口城有人想找回漂流瓶中的回信，能幫忙嗎？',progress:()=>`進度：找到海域漂流瓶（${FL['secret:sea:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:sea:6:8'],reward:'maxhp',give:async()=>{party.forEach(m=>{m.max+=3;m.hp=m.max});await say('全隊最大體力提升 3 點！')},doneText:'這封回信終於送到了，謝謝你！'},rare:{title:'月光靈研究',offer:'研究員想確認月光靈是否真的存在，能帶回牠的圖鑑紀錄嗎？',progress:()=>`進度：捕獲月光靈（${dex.has('月光靈')?'已完成':'尚未完成'}）。`,done:()=>dex.has('月光靈'),reward:'heal',give:async()=>{party.forEach(m=>m.hp=m.max);await say('研究員替隊伍完全恢復了體力！')},doneText:'太棒了！月光靈的資料會成為重要研究成果！'},legend:{title:'傳說試煉',offer:'完成火山裂隙的探索，便能取得唯一的傳說捕獲飼料。要接受試煉嗎？',progress:()=>`進度：找到熔岩裂隙（${FL['secret:volc:6:8']?'已完成':'尚未完成'}）。`,done:()=>!!FL['secret:volc:6:8'],give:async()=>{BAG.legendFeed=1;await say('獲得唯一的「傳說必捕飼料」！每次遊戲只能取得 1 枚。')},doneText:'你通過了傳說試煉！'}};
+const Pl={x:3,y:4,px:0,py:0,dir:'down',mv:false,prog:0,tx:0,ty:0};
+const S={mode:'title',t:0,msg:null,menu:null,prompt:''};let B=null,waitA=null;
+const held={};
+/* ---------- sprites ---------- */
+function pigMap(x,y,d,f){
+ R(x+4,y+13+f,3,2,3);R(x+9,y+14-f,3,2,3);
+ ell(x+8,y+9,6,5,3);ell(x+8,y+9,5,4,1);
+ R(x+3,y+2,3,4,3);R(x+10,y+2,3,4,3);
+ ell(x+8,y+6,5,4,3);ell(x+8,y+6,4,3,1);
+ if(d==='down'){R(x+5,y+5,2,2,3);R(x+9,y+5,2,2,3);R(x+6,y+8,4,2,2);R(x+7,y+8,1,1,3);R(x+9,y+8,1,1,3)}
+ if(d==='left'){R(x+4,y+5,2,2,3);R(x+2,y+7,3,3,2);R(x+3,y+8,1,1,3)}
+ if(d==='right'){R(x+10,y+5,2,2,3);R(x+11,y+7,3,3,2);R(x+12,y+8,1,1,3)}
+ if(d==='up'){R(x+7,y+10,2,2,3);R(x+8,y+11,1,1,1)}
+}
+function pigBig(cx,cy){
+ ell(cx,cy+6,22,16,3);ell(cx,cy+6,21,15,1);
+ R(cx-16,cy-26,9,9,3);R(cx-15,cy-25,7,7,2);R(cx+7,cy-26,9,9,3);R(cx+8,cy-25,7,7,2);
+ ell(cx,cy-14,14,12,3);ell(cx,cy-14,13,11,1);
+ ell(cx,cy+6,5,5,3);ell(cx,cy+6,3,3,0);ell(cx,cy+6,1,1,3);
+ R(cx-14,cy+20,8,4,3);R(cx+6,cy+20,8,4,3);
+}
+const wolf=(cx,cy)=>{R(cx-17,cy-20,8,9,3);R(cx-15,cy-18,4,6,1);R(cx+9,cy-20,8,9,3);R(cx+11,cy-18,4,6,1);ell(cx,cy,18,14,3);ell(cx,cy,17,13,1);R(cx-10,cy-5,5,3,3);R(cx+5,cy-5,5,3,3);ell(cx,cy+7,8,6,0);R(cx-2,cy+3,4,3,3);R(cx-4,cy+10,8,1,3);R(cx-4,cy+11,2,2,0);R(cx+2,cy+11,2,2,0)};
+const radish=(cx,cy)=>{R(cx-2,cy-27,4,12,2);R(cx-9,cy-23,4,10,2);R(cx+5,cy-23,4,10,2);ell(cx,cy+4,14,17,3);ell(cx,cy+4,13,16,0);R(cx-7,cy,3,4,3);R(cx+4,cy,3,4,3);R(cx-3,cy+9,6,2,3);R(cx-1,cy+21,3,5,3)};
+const bee=(cx,cy)=>{ell(cx-4,cy-17,8,6,3);ell(cx-4,cy-17,7,5,0);ell(cx+8,cy-16,7,5,3);ell(cx+8,cy-16,6,4,0);ell(cx,cy,16,11,3);ell(cx,cy,15,10,1);R(cx-4,cy-9,4,18,3);R(cx+4,cy-9,4,18,3);R(cx-12,cy-4,4,4,3);R(cx+16,cy-1,6,3,3)};
+const slime=(cx,cy)=>{ell(cx,cy+8,22,15,3);ell(cx,cy+8,21,14,1);R(cx-12,cy,6,3,0);R(cx-9,cy+7,4,6,3);R(cx+5,cy+7,4,6,3);R(cx-3,cy+16,6,2,3)};
+const flame=(cx,cy)=>{ell(cx,cy+8,16,14,3);ell(cx,cy+8,15,13,1);R(cx-3,cy-14,6,10,3);R(cx-2,cy-12,4,8,2);R(cx-9,cy-8,4,6,3);R(cx+6,cy-8,4,6,3);R(cx-8,cy+4,4,4,3);R(cx+4,cy+4,4,4,3);R(cx-4,cy+14,8,2,3)};
+const rock=(cx,cy)=>{ell(cx,cy+6,20,16,3);ell(cx,cy+6,19,15,2);R(cx-10,cy-2,6,3,1);R(cx+4,cy-2,6,3,1);R(cx-3,cy+10,6,2,1);R(cx-14,cy-8,5,4,1)};
+const jelly=(cx,cy)=>{ell(cx,cy,18,13,3);ell(cx,cy,17,12,1);R(cx-8,cy-3,4,4,3);R(cx+4,cy-3,4,4,3);for(let i=-3;i<=3;i+=2)R(cx+i*4-1,cy+12,3,10,3)};
+const legend=(cx,cy)=>{ell(cx,cy+6,22,16,3);ell(cx,cy+6,21,15,2);R(cx-14,cy-24,8,14,3);R(cx+6,cy-24,8,14,3);R(cx-4,cy-28,8,10,1);R(cx-10,cy,4,4,0);R(cx+6,cy,4,4,0);ell(cx,cy+12,7,4,0)};
+const bunny=(cx,cy)=>{ell(cx,cy+8,17,13,3);ell(cx,cy+8,16,12,0);ell(cx-9,cy-14,5,14,3);ell(cx-9,cy-14,3,11,1);ell(cx+9,cy-14,5,14,3);ell(cx+9,cy-14,3,11,1);R(cx-7,cy+4,3,3,3);R(cx+4,cy+4,3,3,3);ell(cx,cy+10,4,3,2)};
+const cutePig=(cx,cy)=>{ell(cx,cy+7,19,14,3);ell(cx,cy+7,18,13,0);R(cx-14,cy-12,8,7,3);R(cx+6,cy-12,8,7,3);ell(cx,cy-5,13,10,3);ell(cx,cy-5,12,9,0);ell(cx,cy+1,5,4,2);R(cx-7,cy-7,3,3,3);R(cx+4,cy-7,3,3,3)};
+const ENEMIES=[{n:'野狼',t:'普',m:4,hp:16,atk:4,d:wolf},{n:'蘿蔔精',t:'草',m:9,hp:14,atk:3,d:radish},{n:'兇蜂',t:'電',m:10,hp:12,atk:5,d:bee},{n:'史萊姆',t:'水',m:8,hp:20,atk:3,d:slime},{n:'火焰豬',t:'火',m:7,hp:15,atk:4,d:flame},{n:'岩石怪',t:'土',m:6,hp:22,atk:3,d:rock},{n:'水母怪',t:'水',m:8,hp:18,atk:4,d:jelly},{n:'炎皇豬',t:'火',m:11,hp:50,atk:9,d:legend},{n:'暗影蝙蝠',t:'暗',m:12,hp:17,atk:5,d:wolf},{n:'毒蘑菇',t:'毒',m:13,hp:19,atk:4,d:radish},{n:'冰晶怪',t:'冰',m:14,hp:24,atk:4,d:rock},{n:'月光靈',t:'光',m:15,hp:16,atk:6,d:slime}];
+const EXTRA_NAMES=['棉花團','奶油兔','草莓兔','蜜糖球','奶酥喵','布丁獸','泡芙豬','櫻桃啾','蘋果團','葡萄泥','彩虹狐','軟綿羊','星星鼠','牛奶熊','糖霜鹿','豆豆鳥','栗子鼴','果凍狐','雲朵羊','花瓣兔','薄荷貓','可可熊','焦糖蛙','奶油鼠','桃桃鹿','小月兔','甜甜圈獸','棉花蝸','蜜桃狐','彩蛋雞','鬆餅怪','莓果熊','銀河貓','露珠兔','泡泡魚','星砂蟹','軟糖龍','彩糖蛇','雪糕狐','奶茶蛙','小花鹿','雲朵豬','糖葫蘆鳥','粉晶兔','果醬怪','月牙狐','星願羊','甜心豬','彩光蝶'];
+const EXTRA_TYPES=['普','草','水','火','電','土','冰','毒','光','暗'];
+const EXTRA_SPRITES=[slime,bunny,radish,flame,bee,rock,jelly,wolf,cutePig,slime];
+EXTRA_NAMES.forEach((n,i)=>ENEMIES.push({n,t:EXTRA_TYPES[i%EXTRA_TYPES.length],m:4+(i%12),hp:12+(i%7)*2,atk:3+(i%5),d:EXTRA_SPRITES[i%EXTRA_SPRITES.length]}));
+const LEGENDS=[{n:'月兔仙子',t:'光',m:16,hp:70,atk:13,d:bunny},{n:'星耀豬皇',t:'光',m:17,hp:78,atk:14,d:cutePig},{n:'雲海兔王',t:'水',m:18,hp:74,atk:13,d:bunny},{n:'赤焰豬神',t:'火',m:19,hp:82,atk:15,d:cutePig}];LEGENDS.forEach(x=>ENEMIES.push(x));
+const LEGEND_IDS=[7,61,62,63,64],isLegend=s=>LEGEND_IDS.includes(s),legendTarget=()=>LEGEND_IDS.find(i=>!FL['leg'+i])||7,hasLegendLeft=()=>LEGEND_IDS.some(i=>!FL['leg'+i]);
+const MOVES=[{n:'粉紅衝撞',p:5,a:1},{n:'滾滾突襲',p:9,a:.8},{n:'威嚇哼鳴',t:'d'},{n:'元氣飼料',t:'h'},{n:'鋼鐵頭槌',p:8,a:1},{n:'豬突猛進',p:14,a:.85},{n:'大地泥彈',p:11,a:.95,y:'土'},{n:'暖焰火花',p:9,a:1,y:'火'},{n:'清泉水槍',p:9,a:1,y:'水'},{n:'荊棘藤鞭',p:9,a:1,y:'草'},{n:'雷光電擊',p:9,a:1,y:'電'},{n:'炎皇爆裂',p:20,a:.9,y:'火'},{n:'暗夜爪擊',p:12,a:.9,y:'暗'},{n:'毒霧噴吐',p:10,a:.95,y:'毒'},{n:'冰晶碎裂',p:13,a:.9,y:'冰'},{n:'月光脈衝',p:15,a:.9,y:'光'},{n:'月兔星願',p:32,a:.95,y:'光'},{n:'星耀豬皇擊',p:36,a:.9,y:'光'},{n:'雲海幻舞',p:34,a:.95,y:'水'},{n:'赤焰神燼',p:40,a:.85,y:'火'},{n:'炎煌神焰',p:45,a:.9,y:'火'}];
+const SPECIES_MOVES={0:[0,4,5],1:[0,9,6],2:[0,10,5],3:[0,8,4],4:[0,7,11],5:[0,6,4],6:[0,8,10],7:[0,20,11],8:[0,12,5],9:[0,13,6],10:[0,14,4],11:[0,15,5],61:[0,16],62:[0,17],63:[0,18],64:[0,19]};
+const TYPE_MOVE={火:7,水:8,草:9,電:10,土:6,暗:12,毒:13,冰:14,光:15,普:4};
+const movesFor=(s,lv)=>{const p=ENEMIES[s],pool=SPECIES_MOVES[s]||[0,TYPE_MOVE[p?.t]||4,5];return [0,...pool.filter(i=>i!==0&&((i===pool[1]&&lv>=3)||(i===pool[2]&&lv>=8)||(i===pool[3]&&lv>=16)))].slice(0,4)};
+const moveLabel=i=>{const m=MOVES[i];return m.p?`${m.n} 威力${m.p}`:`${m.n}（${m.t==='d'?'降攻':'回復'}）`};
+const SE={普:[],火:['草','冰'],水:['火','土'],草:['水','土'],電:['水'],土:['電','火'],暗:['光'],毒:['草'],冰:['草','水'],光:['暗','毒']};
+const mult=(a,d)=>SE[a].includes(d)?2:SE[d].includes(a)?.5:1;
+const nb=()=>GYMS.filter((g,i)=>FL['b'+i]).length;
+const mon=(s,lv)=>{const p=ENEMIES[s],h=p.hp+lv*3;return{s,n:p.n,t:p.t,lv,max:h,hp:h,exp:0,dh:h,mv:movesFor(s,lv)}};
+const LEARN={3:4,5:5,7:6,9:8,11:9,13:7,15:10};
+const mk=(m,x,y,c,id,d,t,w,a,q,shop)=>({m,x,y,c,id,d,t,w,a,q,shop});
+const NPCS=[
+ mk('town',7,5,1,0,['老豬：歡迎來到豬豬鎮！','東邊有一條通往道館的草原路。','等級到 5 以上再去挑戰館主吧。']),
+ mk('town',13,10,2,0,['村民：草叢裡的怪獸越來越兇。','在小屋睡覺還能記錄冒險喔！']),
+ mk('town',2,13,1,'s0',['小豬郵差：我每天都在鎮裡送信！','聽說東南角的石板會在月光下發亮。']),
+ mk('town',5,1,2,'shop',['豬豬雜貨店：歡迎來看看旅行用品！'],null,null,null,null,null,'store'),
+ mk('town',10,1,3,'qboard',['任務公告板：這裡有給訓練豬的委託。'],null,null,null,null,'patrol'),
+ mk('town',12,1,1,'qbottle',['港口研究員：漂流瓶裡有一封重要的回信。'],null,null,null,null,'bottle'),
+ mk('town',14,1,2,'qrare',['月光研究員：我想確認月光靈是否真的存在。'],null,null,null,null,'rare'),
+ mk('town',16,1,3,'qlegend',['傳說研究員：完成最後試煉，我會給你一枚唯一的傳說捕獲飼料。'],null,null,null,null,'legend'),
+ mk('route',8,5,2,'t1',['牧童阿牛：喂，來場對決吧！'],{n:'牧童阿牛',lv:3,b:ENEMIES[0]},['牧童阿牛：輸了……道館就在北邊。'],'牧童阿牛：道館就在北邊的大屋。'),
+ mk('gym',6,4,2,'t2',['學徒：想見館主？先過我這關！'],{n:'學徒',lv:4,b:ENEMIES[2]},['學徒：館主就在最裡面。'],'學徒：館主就在最裡面。'),
+ mk('gym',4,1,3,'boss',['館主豬大哥：我是這裡的館主！','讓我看看你的小豬有多強！'],{n:'館主豬大哥',lv:6,b:{n:'巨型史萊姆',hp:24,atk:5,d:slime}},['館主豬大哥：太精彩了！這枚徽章送給你！'],'館主豬大哥：你是豬豬鎮最強的訓練豬！')
+];
+GYMS.forEach((g,i)=>{const sp=ENEMIES[g.s],tp=sp.t,m='g'+i;
+ NPCS.push(mk(m,6,4,2,'t'+i,['學徒：想見館主？先過我這關！'],{n:'學徒',lv:g.lv-2,b:sp},['學徒：館主就在最裡面。'],'學徒：館主就在最裡面。'),
+ mk(m,4,1,3,'boss'+i,[`${tp}系館主：我是第${i+1}道館的館主！`,'讓我看看你的隊伍有多強！'],{n:`${tp}系館主`,lv:g.lv,b:{...sp,n:sp.n+'王',hp:sp.hp+10,atk:sp.atk+1}},['館主：太精彩了！徽章送給你！'],'館主：你是最強的訓練豬！'))});
+/* ---- v2 expansion ---- */
+const cuteSp=(rb,ac,hu)=>(cx,cy)=>{const h=hu?1:0;ell(cx,cy+8,17,13,3);ell(cx,cy+8,16,12,h);
+ if(rb){[-8,8].forEach(o=>{ell(cx+o,cy-13,4,13,3);ell(cx+o,cy-13,2,10,1)})}else{[-14,7].forEach(o=>{R(cx+o,cy-10,7,6,3);R(cx+o+1,cy-9,5,4,1)})}
+ ell(cx,cy-2,12,9,3);ell(cx,cy-2,11,8,h);R(cx-6,cy-4,2,3,3);R(cx+4,cy-4,2,3,3);R(cx-9,cy,3,2,2);R(cx+6,cy,3,2,2);
+ if(rb)R(cx-1,cy,2,2,2);else{ell(cx,cy+1,3,2,2);R(cx-1,cy+1,1,1,3);R(cx+1,cy+1,1,1,3)}
+ if(ac===1){R(cx+6,cy-11,3,3,2);R(cx+10,cy-11,3,3,2)}if(ac===2){R(cx-1,cy-11,2,5,2);R(cx-3,cy-9,6,1,2)}if(ac===3)ell(cx+10,cy-9,3,2,2);if(ac===4){R(cx-12,cy+18,6,3,3);R(cx+6,cy+18,6,3,3)}};
+const NEWN='布丁兔 雲朵兔 草莓豬 蜜桃豬 棉花豬 奶蓋兔 糖心兔 年糕豬 湯圓兔 麻糬豬 珍珠兔 芋圓豬 奶茶兔 桂花豬 桃花兔 藍莓豬 薄荷兔 抹茶豬 櫻花兔 栗子豬 南瓜兔 檸檬豬 星星兔 月餅豬 雪球兔 彩虹豬 泡泡兔 蛋糕豬 餅乾兔 糖果豬 鈴鐺兔 花環豬 小太陽兔 小雨滴豬 雷雷兔 煙花豬 晶晶兔 夢夢豬 蝴蝶兔 星砂豬'.split(' ');
+NEWN.forEach((n,i)=>ENEMIES.push({n,t:EXTRA_TYPES[(i*3+1)%10],m:4+i%12,hp:12+(i%7)*2,atk:3+i%5,d:cuteSp(n.endsWith('兔'),i%5,i%3===1)}));
+const moonB=(cx,cy)=>{bunny(cx,cy);R(cx-3,cy-20,6,2,2);R(cx-1,cy-23,2,3,2);R(cx-24,cy-6,3,3,2);R(cx+22,cy-2,3,3,2)};
+const boltP=(cx,cy)=>{cutePig(cx,cy);R(cx+1,cy-24,4,3,2);R(cx-1,cy-21,4,3,2);R(cx-3,cy-18,4,3,2);R(cx-24,cy-6,3,3,2);R(cx+22,cy-2,3,3,2)};
+const dream=(cx,cy)=>{ell(cx,cy+8,22,16,3);ell(cx,cy+8,21,15,0);[-11,11].forEach(o=>{ell(cx+o,cy-18,5,16,3);ell(cx+o,cy-18,3,13,1)});ell(cx,cy-3,15,12,3);ell(cx,cy-3,14,11,0);R(cx-8,cy-6,3,4,3);R(cx+5,cy-6,3,4,3);R(cx-12,cy,4,3,2);R(cx+8,cy,4,3,2);ell(cx,cy+2,5,3,2);R(cx-2,cy+2,1,1,3);R(cx+1,cy+2,1,1,3);R(cx-7,cy-15,14,3,2);R(cx-7,cy-19,3,4,2);R(cx-1,cy-21,3,6,2);R(cx+4,cy-19,3,4,2);ell(cx-3,cy+12,3,3,2);ell(cx+3,cy+12,3,3,2);R(cx-5,cy+14,10,3,2);R(cx-28,cy-8,3,3,2);R(cx+25,cy-4,3,3,2);R(cx+22,cy-22,2,2,1);R(cx-26,cy+10,2,2,1)};
+ENEMIES.push({n:'雪月兔神',t:'冰',m:20,hp:88,atk:16,d:moonB},{n:'雷霆豬王',t:'電',m:20,hp:92,atk:17,d:boltP});
+LEGEND_IDS.push(105,106);const ULT=107;ENEMIES.push({n:'夢幻兔豬皇',t:'光',m:30,hp:130,atk:22,d:dream});
+MOVES.push({n:'極光月舞',p:38,a:.95,y:'冰'},{n:'雷鳴豬突',p:42,a:.9,y:'電'},{n:'星夢閃光',p:42,a:.95,y:'光'},{n:'甜夢治癒',t:'h'},{n:'彩虹星爆',p:70,a:.9,y:'光'});
+SPECIES_MOVES[105]=[0,21];SPECIES_MOVES[106]=[0,22];SPECIES_MOVES[107]=[0,23,24,25];
+let PZ=null;
+const pzTog=(g,i)=>{const x=i%3,y=i/3|0;[[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{const X=x+a,Y=y+b;if(X>=0&&X<3&&Y>=0&&Y<3)g[Y*3+X]^=1})};
+const pzNew=()=>{const g=Array(9).fill(1);for(let i=0;i<9;i++)if(Math.random()<.5)pzTog(g,i);if(g.every(v=>v))pzTog(g,4);return g};
+const puzzle=()=>new Promise(r=>{PZ={g:pzNew(),c:4,n:0,r};S.mode='puzzle'});
+function drawPuz(){R(0,0,160,144,0);box(2,2,156,140);T('星夢謎題',9,7,2,10);T(`步數 ${PZ.n}`,100,8,2,9);
+ PZ.g.forEach((v,i)=>{const x=40+(i%3)*28,y=24+(i/3|0)*28;R(x,y,26,26,3);R(x+1,y+1,24,24,v?1:2);if(v){ell(x+13,y+13,6,6,0);R(x+12,y+4,2,18,0);R(x+4,y+12,18,2,0)}
+  if(PZ.c===i){R(x+2,y+2,4,4,3);R(x+20,y+2,4,4,3);R(x+2,y+20,4,4,3);R(x+20,y+20,4,4,3)}});
+ T('A 切換　B 重新洗牌',9,122,2,8);T('點亮全部星星！',9,131,3,8)}
+QUESTS.dream={title:'夢幻謎題',offer:'傳說中的「夢幻兔豬皇」只會回應有緣的訓練豬。先收集 10 隻圖鑑，再來解開星夢謎題吧！要接受嗎？',progress:()=>`進度：圖鑑登錄 10 隻（目前 ${dex.size}/10）。達成後再來找我解謎。`,done:()=>dex.size>=10,doneText:'圖鑑夠豐富了！那麼，開始星夢謎題吧！',
+ give:async()=>{await say('把 9 顆星星全部點亮！\n（A 切換周圍　B 重新洗牌）');await puzzle();await say('星星全部亮了！粉紅的夢幻光芒灑落……');const m=mon(ULT,30);if(party.length<6){party.push(m);await say(`${m.n}加入了隊伍！`)}else{pcBox.push(m);await say('隊伍滿了，已傳送到電腦盒子！')}dex.add(m.n);FL['s'+ULT]=1;await say(`${m.n}登錄到圖鑑了！（${dex.size}/${ENEMIES.length}）`)}};
+NPCS.push(mk('town',11,13,3,'qdream',['夢幻研究員：傳說中的兔豬皇，只有解開星夢謎題的人才能見到。'],null,null,null,null,'dream'));
+async function center(h){
+ S.mode='event';await say(h?'豬媳媳：歡迎回家！':'豬豬中心：歡迎光臨！');party.forEach(m=>m.hp=m.max);await say('已經幫你的隊伍全部回復了體力！');
+ for(;;){S.prompt='還需要\n什麼服務？';const c=await choose(['電腦','存檔','離開'],1,'right');if(c===0)await pc();else if(c===1)await say(save()?'冒險已經記錄下來了！':'無法存檔……');else break}
+ S.mode='map';
+}
+async function pc(){
+ let pg=0;
+ for(;;){S.prompt=`電腦盒子\n（${pcBox.length}隻）`;const c=await choose(['存入','取出','離開'],1,'right');
+  if(c===0){if(party.length<2){await say('隊伍至少要留一隻！');continue}
+   const i=await choose(party.map(m=>`${m.n}Lv${m.lv}`),2,'full',true);if(i<0)continue;
+   if(party[i]===pig){await say('出戰中的不能存入！');continue}
+   pcBox.push(party.splice(i,1)[0]);await say('已經存入電腦。')}
+  else if(c===1){if(!pcBox.length){await say('電腦裡是空的。');continue}if(party.length>5){await say('隊伍已滿！');continue}
+   if(pg*5>=pcBox.length)pg=0;const L=pcBox.slice(pg*5,pg*5+5),i=await choose([...L.map(m=>`${m.n}Lv${m.lv}`),'下一頁'],2,'full',true);
+   if(i<0)continue;if(i===L.length){pg++;continue}party.push(pcBox.splice(pg*5+i,1)[0]);await say('已經加入隊伍。')}
+  else return}
+}
+async function questView(){return openView('quest')}
+async function field(){
+ S.mode='event';S.prompt='要做什麼？';const c=await choose(['圖鑑','隊伍','任務','背包','飛行','取消'],2,'full',true);
+ if(c===0)await dexView();else if(c===1)await teamView();else if(c===2)await questView();else if(c===3)await bagMenu();else if(c===4){if(!FL.fly)await say('還沒學會飛行。打贏第三道館就能學會！');
+  else if(cur[0]==='g'||cur==='maze')await say('這裡不能飛行。');
+  else{const l=FLY.filter(f=>FL['v'+f[0]]),i=await choose(l.map(f=>f[1]),2,'full',true);if(i>=0){surf=false;setMap(l[i][0]);Pl.x=l[i][2];Pl.y=l[i][3];await say('小豬展翼高飛，轉眼就到了'+l[i][1]+'！')}}}
+ S.mode='map';
+}
+async function surfTry(){const d=D[Pl.dir],x=Pl.x+d[0],y=Pl.y+d[1];if(FL.surf&&!surf&&MAP[y]&&MAP[y][x]==='w'){S.mode='event';await say('小豬跳上浪板，開始衝浪！');surf=true;S.mode='map'}}
+async function legend2(){S.mode='event';const q=ENEMIES[legendTarget()];await say(`迷宮深處，${q.n}靜靜沉睡著……`);await say(`${q.n}睜開雙眼，發出震天的怒吼！`);battle(0,0,1)}
+const openView=k=>new Promise(r=>{S.mode='view';S.vk=k;S.vi=0;S.vr=r}),dexView=()=>openView('dex'),teamView=()=>openView('team');
+function drawView(){
+ R(0,0,160,144,0);box(2,2,156,140);const i=S.vi;
+ if(S.vk==='quest'){
+  T('支線任務',9,8,2,11);let y=28;Object.entries(QUESTS).forEach(([id,q])=>{const st=FL['q:'+id];T((st==='done'?'✓ ':st==='active'?'▶ ':'○ ')+q.title,9,y,st==='done'?1:3,8);T(st==='done'?'已完成':st==='active'?'進行中':'未接取',105,y,2,7);y+=18});T('在城鎮公告板接取任務',9,118,2,8);T('B 關閉',9,131,2,8);
+ }else if(S.vk==='dex'){
+  const p=ENEMIES[i],c=dex.has(p.n),s=c||FL['s'+i];
+  T(`圖鑑 ${i+1}/${ENEMIES.length}`,9,7,2,9);T(`已捕抓 ${ENEMIES.filter(q=>dex.has(q.n)).length}`,100,7,2,9);
+  ell(80,88,30,5,1);if(s)p.d(80,62);else T('？',72,48,2,28);
+  T(s?`${p.n}　[${p.t}]`:'？？？',9,96);T(c?'已捕抓':s?'已發現（還沒捕抓）':'尚未發現',9,109,2,9);
+  if(s)T('成長招式：'+movesFor(i,20).map(moveLabel).join('／'),9,121,3,7);
+ }else{
+  const L=[...party,...pcBox],m=L[i];
+  T(`${i<party.length?'隊伍':'電腦盒子'} ${i+1}/${L.length}`,9,7,2,9);
+  ell(80,88,30,5,1);if(m.s===undefined)pigBig(80,62);else ENEMIES[m.s].d(80,62);
+  T(`${m.n}　Lv${m.lv}　[${m.t}]`,9,96);T(`HP ${m.hp}/${m.max}　經驗 ${m.exp}/${m.lv*10}`,9,109,2,9);
+  T('招式：'+m.mv.map(moveLabel).join('／'),9,121,3,7);
+ }
+ T('◀ ▶ 切換　B 關閉',9,131,2,8);
+}
+async function swap(forced){
+ const c=await choose(party.map(m=>`${m.n}${m.hp>0?'':'×'}Lv${m.lv}`),2,'full',!forced);
+ if(c<0)return 0;const m=party[c];
+ if(m===pig){await say('已經在場上了！');return 0}
+ if(m.hp<=0){await say('它已經沒力了！');return 0}
+ pig=m;pig.dh=pig.hp;await say(`上吧，${pig.n}！`);return 1;
+}
+const npcAt=(x,y)=>NPCS.find(n=>n.m===cur&&n.x===x&&n.y===y);
+function npcSprite(x,y,c){R(x+4,y+8,8,7,3);R(x+5,y+9,6,5,c);ell(x+8,y+5,4,4,3);ell(x+8,y+5,3,3,0);R(x+6,y+4,1,1,3);R(x+9,y+4,1,1,3);R(x+4,y+1,8,2,3)}
+const SK='pigmon1';
+const has=()=>{try{return !!localStorage.getItem(SK)}catch(e){return false}};
+function save(){try{localStorage.setItem(SK,JSON.stringify({party,box:pcBox,act:party.indexOf(pig),dex:[...dex],m:cur,x:Pl.x,y:Pl.y,FL,bag:BAG}));return 1}catch(e){return 0}}
+function load(){try{const d=JSON.parse(localStorage.getItem(SK));if(!d)return 0;party.length=0;(d.party||[Object.assign({n:'小豬',t:'普'},d.pig)]).forEach(m=>party.push(m));pig=party[d.act]||party[0];pcBox.length=0;(d.box||[]).forEach(m=>pcBox.push(m));(d.dex||[]).forEach(n=>dex.add(n));Object.assign(FL,d.FL||{});if(FL.leg&&!FL.leg7)FL.leg7=1;Object.assign(BAG,d.bag||{});setMap(d.m);Pl.x=d.x;Pl.y=d.y;return 1}catch(e){return 0}}
+async function bagMenu(){S.mode='event';for(;;){S.prompt=`背包　金幣 ${BAG.coins}\n避怪剩餘 ${BAG.repel} 步`;const o=[];if(BAG.repel<=0){if(BAG.rep100)o.push(`避怪藥水100（${BAG.rep100}）`);if(BAG.rep200)o.push(`避怪藥水200（${BAG.rep200}）`);if(BAG.rep400)o.push(`避怪藥水400（${BAG.rep400}）`)}else o.push('目前正在避怪');o.push('關閉');const c=await choose(o,1,'right',true);if(c<0||c===o.length-1)break;if(BAG.repel<=0){const names=['rep100','rep200','rep400'],key=names.find((k,i)=>BAG[k]&&o[c].startsWith('避怪藥水'+[100,200,400][i]));if(key){BAG[key]--;BAG.repel=Number(key.slice(3));await say(`使用了避怪藥水，接下來 ${BAG.repel} 步不會遇到怪物！`)}}}S.mode='map'}
+async function shopTalk(){S.mode='event';for(;;){S.prompt=`豬豬雜貨店\n金幣：${BAG.coins}`;const c=await choose(['高級飼料　80','避怪藥水100　60','避怪藥水200　100','避怪藥水400　180','離開'],1,'right',true);if(c<0||c===4)break;const price=[80,60,100,180][c];if(BAG.coins<price){await say('金幣不夠！');continue}BAG.coins-=price;if(c===0)BAG.superFeed++;if(c===1)BAG.rep100++;if(c===2)BAG.rep200++;if(c===3)BAG.rep400++;await say('購買成功！')}S.mode='map'}
+async function questTalk(N){const q=QUESTS[N.q];S.mode='event';const key='q:'+N.q;if(!q){S.mode='map';return}if(!FL[key]){await say(q.offer);if(await choose(['接受任務','先等等'],1,'right')===0){FL[key]='active';await say('任務已加入！可以按 B 開啟任務查看進度。')}}else if(FL[key]==='active'){if(q.done()){FL[key]='done';await say(q.doneText);await q.give();await say('支線任務完成！')}else await say(q.progress())}else await say('這項任務已經完成了，謝謝你的幫忙！');S.mode='map'}
+async function talk(N){
+ S.mode='event';
+ if(N.shop){await shopTalk();return}if(N.q){await questTalk(N);return}
+ if(N.t&&!FL[N.id]){
+  for(const s of N.d)await say(s);
+  const w=await battle(N.t);
+  if(w){FL[N.id]=1;S.mode='event';for(const s of N.w)await say(s);
+   if(N.id.startsWith('boss')){FL['b'+N.id.slice(4)]=1;party.forEach(m=>{m.max+=3;m.hp=m.max});await say('獲得了徽章！全隊最大體力提升了！');if(N.id==='boss1'){FL.surf=1;await say('獲得祕傳技能「衝浪」！面對水面按 A 就能出發！')}if(N.id==='boss2'){FL.fly=1;await say('獲得祕傳技能「飛行」！在地圖上按 B 開啟選單！')}if(nb()===7)await say('集滿七枚徽章！你就是豬豬小可愛冠軍！')}}
+ }else for(const s of(N.t?[N.a]:N.d))await say(s);
+ S.mode='map';
+}
+async function learn(m){
+ const n=MOVES[m].n;await say(`小豬想學會「${n}」！`);await say('要忘記哪一招？\n（按 B 就不學）');
+ const c=await choose(pig.mv.map(i=>MOVES[i].n),2,'full',true);
+ if(c<0){await say(`小豬沒有學會${n}。`);return}
+ const o=MOVES[pig.mv[c]].n;pig.mv[c]=m;await say(`忘記了${o}，學會了${n}！`);
+}
+/* ---------- dialog / menu ---------- */
+function wrap(t){ctx.font='10px '+FONT;const L=[];for(const part of t.split('\n')){let l='';for(const ch of part){if(ctx.measureText(l+ch).width>142){L.push(l);l=ch}else l+=ch}L.push(l)}return L}
+function say(t){return new Promise(r=>{S.msg={t,l:wrap(t),n:t.replace(/\n/g,'').length,shown:0};waitA=r})}
+function choose(o,c,boxType,cancel){return new Promise(r=>{S.menu={o,c,box:boxType,i:0,cancel,r}})}
+function press(k){
+ if(S.mode==='title'){if(k==='a')start();return}
+ if(S.mode==='puzzle'){const p=PZ;if(k==='left'&&p.c%3)p.c--;if(k==='right'&&p.c%3<2)p.c++;if(k==='up'&&p.c>2)p.c-=3;if(k==='down'&&p.c<6)p.c+=3;if(k==='a'){pzTog(p.g,p.c);p.n++;if(p.g.every(v=>v)){S.mode='event';p.r()}}if(k==='b'){p.g=pzNew();p.n=0}return}
+ if(S.mode==='view'){if(S.vk==='quest'){if(k==='b'){S.mode='event';S.vr()}return}const n=S.vk==='dex'?ENEMIES.length:party.length+pcBox.length;if(k==='left')S.vi=(S.vi+n-1)%n;if(k==='right'||k==='a')S.vi=(S.vi+1)%n;if(k==='b'){S.mode='event';S.vr()}return}
+ if(S.msg){if(k==='a'||k==='b'){const m=S.msg;if(m.shown<m.n)m.shown=m.n;else{S.msg=null;const r=waitA;waitA=null;r&&r()}}return}
+ const m=S.menu;if(!m){if(k==='a'&&S.mode==='map'&&!Pl.mv){const N=npcAt(Pl.x+D[Pl.dir][0],Pl.y+D[Pl.dir][1]);if(N)talk(N);else surfTry()}if(k==='b'&&S.mode==='map'&&!Pl.mv)field();return}const n=m.o.length,c=m.c;
+ if(k==='up'&&m.i>=c)m.i-=c;if(k==='down'&&m.i+c<n)m.i+=c;
+ if(k==='left'&&m.i%c>0)m.i--;if(k==='right'&&m.i%c<c-1&&m.i+1<n)m.i++;
+ if(k==='a'){S.menu=null;m.r(m.i)}if(k==='b'&&m.cancel){S.menu=null;m.r(-1)}
+}
+/* ---------- game flow ---------- */
+async function start(){if(has()){S.mode='event';S.prompt='要繼續\n冒險嗎？';if(await choose(['繼續','新遊戲'],1,'right')===0&&load()){await say('歡迎回來，小豬！');S.mode='map';return}}
+ S.mode='event';
+ await say('這裡是豬豬鎮。小豬要成為最厲害的怪獸訓練豬！');
+ await say('用方向鍵移動。草叢裡會遇到野生怪獸。面對路人按 A 可以對話。');await say('用飼料收服怪獸，組成六隻隊伍！注意屬性相剋，打贏七個道館，還有 7 隻傳說怪物等著你挑戰！');
+ S.mode='map';
+}
+function walk(x,y){return x>=0&&y>=0&&x<MW&&y<MH&&!(surf?'#HL':'#HLw').includes(MAP[y][x])&&!npcAt(x,y)}
+async function arrive(){
+ if(S.mode!=='map')return;const c=MAP[Pl.y][Pl.x],wk=WARP[`${cur},${Pl.x},${Pl.y}`];if(wk){setMap(wk[0]);Pl.x=wk[1];Pl.y=wk[2];return}if(surf&&c!=='w')surf=false;if(BAG.repel>0)BAG.repel--;
+ if(c==='E'){const sk=`secret:${cur}:${Pl.x}:${Pl.y}`,q=SECRETS[sk];if(q&&!FL[sk]){S.mode='event';for(const line of q.lines)await say(line);FL[sk]=1;if(q.reward==='maxhp'){pig.max+=6;pig.hp=pig.max;await say('小豬的最大體力提升 6 點！')}if(q.reward==='exp'){pig.exp+=12;await say('小豬獲得了 12 點探索經驗！')}if(q.reward==='heal'){party.forEach(m=>m.hp=m.max);await say('隊伍全員恢復體力！')}if(q.reward==='rare'){FL.rare=1;await say('稀有怪物的出現率提高了！')}S.mode='map';return}}if(c==='h'||c==='C'){center(c==='h');return}if(c==='X'&&hasLegendLeft()){legend2();return}if(0){S.mode='event';await say('這是豬窩小屋。豬媽媽在等你回家。');party.forEach(m=>m.hp=m.max);await say('小豬睡了一覺，體力全部恢復了！');S.prompt='要記錄\n冒險嗎？';if(await choose(['存檔','不用'],1,'right')===0)await say(save()?'冒險已經記錄下來了！':'無法存檔……');S.mode='map'}
+ else if(BAG.repel<=0&&(c==='g'||c==='w'||(cur==='maze'&&c==='.'))&&Math.random()<(c==='.'?.07:.14))battle(0,c==='w');
+}
+const wildPool0=()=>cur==='sea'?[ENEMIES[3],ENEMIES[6],ENEMIES[8],ENEMIES[10]]:cur==='volc'?[ENEMIES[4],ENEMIES[5],ENEMIES[9],ENEMIES[8]]:cur==='maze'?[ENEMIES[0],ENEMIES[8],ENEMIES[9],ENEMIES[11]]:cur==='a3'?[ENEMIES[2],ENEMIES[6],ENEMIES[10],ENEMIES[11]]:(FL.rare?[...ENEMIES.slice(0,6),ENEMIES[9],ENEMIES[11]]:ENEMIES.slice(0,6));
+const ALLN=[...Array(49).keys()].map(i=>i+12).concat(NEWN.map((_,i)=>65+i)),AOFF={route:0,a2:14,a3:28,a4:42,sea:55,volc:68,maze:71};
+const wildPool=()=>{const o=AOFF[cur]??0,rare=FL.rare||o>50;return [...wildPool0(),...ALLN.slice(o,o+18).filter(i=>i<95||rare).map(i=>ENEMIES[i])]};
+async function battle(T,W,L){
+ S.mode='trans';S.t0=performance.now();await sleep(800);
+ const lv=L?28:T?T.lv:Math.max(1,pig.lv+rnd(-1,1)),b=L?ENEMIES[legendTarget()]:T?T.b:pick(W?[ENEMIES[3],ENEMIES[6]]:wildPool());
+ const E={n:b.n,d:b.d,lv,max:b.hp+lv*3,atk:b.atk+lv,st:0,t:b.t||'普',s:ENEMIES.indexOf(b)};E.mv=movesFor(E.s,lv);E.hp=E.dh=E.max;if(E.s>=0)FL['s'+E.s]=1;
+ B={e:E,eat:3,bl:null,feedBonus:0,guaranteed:false};S.mode='battle';
+ await say(T?`${T.n}派出了${E.n}！`:`野生的${E.n}出現了！`);
+ let over=false;
+ while(!over){
+  S.prompt='小豬要\n怎麼做？';
+  const c=await choose(['戰鬥','飼料','隊伍','逃跑'],2,'full');
+  if(c===0){
+   const m=await choose(pig.mv.map(i=>i===3?moveLabel(i)+'×'+B.eat:moveLabel(i)),2,'full',true);
+   if(m<0)continue;
+   if(!(await useMove(pig.mv[m])))continue;
+   if(E.hp<=0){B.won=1;await say(`${E.n}倒下了！`);await gain(E);over=true;break}
+  }else if(c===1){
+   if(T){await say('不能收服別人的怪獸！');continue}if(BAG.feed<=0&&!BAG.superFeed&&!(isLegend(E.s)&&BAG.legendFeed)){await say('飼料用完了，請先到商店補貨！');continue}const feeds=[];if(BAG.feed>0)feeds.push('普通飼料');if(BAG.superFeed)feeds.push(`高級飼料（${BAG.superFeed}）`);if(isLegend(E.s)&&BAG.legendFeed)feeds.push('傳說必捕飼料（唯一）');const fi=await choose(feeds,1,'right',true);if(fi<0)continue;if(feeds[fi].startsWith('高級')){BAG.superFeed--;B.feedBonus=.22;await say('使用高級飼料，捕獲機率提升！')}else if(feeds[fi].startsWith('傳說')){BAG.legendFeed=0;B.guaranteed=true;await say('傳說必捕飼料發動！這次一定能捕獲！')}else{BAG.feed=Math.max(0,BAG.feed-1);B.feedBonus=0}await say('小豬丟出了飼料！');await sleep(400);
+   if(B.guaranteed||Math.random()<(.25+.6*(1-E.hp/E.max)+B.feedBonus)*(isLegend(E.s)?.4:1)){
+    if(isLegend(E.s)){FL['leg'+E.s]=1;if(!hasLegendLeft())FL.leg=1;}await say(`${E.n}被飼料收買，成為了朋友！`);if(party.length<6){party.push(mon(E.s,E.lv));await say(`${E.n}加入了隊伍！`)}else{pcBox.push(mon(E.s,E.lv));await say('隊伍滿了，已傳送到電腦盒子！')}
+    if(!dex.has(E.n)){dex.add(E.n);await say(`${E.n}登錄到圖鑑了！（${dex.size}/${ENEMIES.length}）`)}
+    await gain(E);over=true;break}
+   await say(`${E.n}不領情……`);
+  }else{
+   if(c===2){if(!(await swap()))continue}else{if(T){await say('對決中不能逃跑！');continue}if(Math.random()<.7){await say('成功逃跑了！');over=true;break}
+   await say('逃不掉！')}
+  }
+  const ei=pick(E.mv||[0]),EM=MOVES[ei];await say(`${E.n}使出了${moveLabel(ei)}！`);
+  if(EM.t==='d'){if(E.st>-3){E.st--;await say(`${pig.n}的攻擊被壓制了！`)}else await say('但是沒有更多效果了！')}
+  else if(EM.t==='h'){const h=6+E.lv;E.hp=Math.min(E.max,E.hp+h);await say(`${E.n}恢復了${h}點體力！`)}
+  else if(Math.random()>.1){const mx=mult(EM.y||E.t,pig.t),d=Math.max(1,Math.round((EM.p||E.atk)*mx*(.8+Math.random()*.5)*Math.max(.4,1+.25*E.st)));pig.hp=Math.max(0,pig.hp-d);await blink('p');await say(`${pig.n}受到了${d}點傷害！`);if(mx!==1)await say(mx>1?'效果絕佳！':'效果不太好……')}
+  else await say('但是沒有打中！')
+  if(pig.hp<=0){await say(`${pig.n}倒下了……`);if(party.some(m=>m.hp>0)){while(!(await swap(1)));}else{await say('隊伍全軍覆沒，被送回了豬窩。');party.forEach(m=>m.hp=m.max);pig=party[0];pig.dh=pig.hp;setMap('town');Pl.x=3;Pl.y=4;over=true}}
+ }
+ const won=B.won;B=null;S.mode='map';return won;
+}
+async function useMove(i){
+ const M=MOVES[i],E=B.e;
+ if(M.t==='h'&&B.eat<=0){await say('飼料桶空了！');return false}
+ await say(`${pig.n}使出了${M.n}！`);
+ if(M.t==='d'){if(E.st>-3){E.st--;await say(`${E.n}的攻擊下降了！`)}else await say('但是沒有效果……');return true}
+ if(M.t==='h'){B.eat--;const h=8+pig.lv*2;pig.hp=Math.min(pig.max,pig.hp+h);await say(`${pig.n}大口吃飯，恢復了${h}點體力！`);return true}
+ if(Math.random()>M.a){await say('但是沒有命中……');return true}
+ const mx=mult(M.y||'普',E.t),d=Math.max(1,Math.round(M.p*mx*(1+(4+pig.lv)/10)*(.85+Math.random()*.3)));
+ E.hp=Math.max(0,E.hp-d);await blink('e');await say(`${E.n}受到了${d}點傷害！`);if(mx!==1)await say(mx>1?'效果絕佳！':'效果不太好……');return true;
+}
+async function gain(E){
+ FL.wins=(FL.wins||0)+1;
+ const coins=Math.max(8,E.lv*3);BAG.coins+=coins;
+ const g=E.lv*6+4;pig.exp+=g;await say(`${pig.n}獲得了${g}點經驗值！並找到 ${coins} 枚金幣！`);
+ while(pig.exp>=pig.lv*10){pig.exp-=pig.lv*10;pig.lv++;pig.max+=5;pig.hp=Math.min(pig.max,pig.hp+5);await say(`${pig.n}升級了！現在是 Lv${pig.lv}！`);if(pig.s===undefined&&LEARN[pig.lv])await learn(LEARN[pig.lv])}
+}
+async function blink(w){B.bl=w;await sleep(500);B.bl=null}
+/* ---------- drawing ---------- */
+function tile(c,x,y,sx,sy){
+ if(c==='#'){R(sx,sy,16,16,0);ell(sx+8,sy+8,7,7,3);ell(sx+8,sy+7,5,5,2);R(sx+7,sy+12,2,4,3);return}
+ if(c==='g'){R(sx,sy,16,16,1);for(let i=0;i<4;i++){R(sx+2+i*4,sy+4+(i%2)*5,1,5,2);R(sx+3+i*4,sy+6+(i%2)*5,1,3,2)}return}
+ if(c==='w'){R(sx,sy,16,16,2);const o=(S.t>>4&1)*3;R(sx+2+o,sy+4,6,1,1);R(sx+7-o,sy+11,6,1,1);return}
+ if('HhGC'.includes(c)){
+  const a=MAP[y-1]&&MAP[y-1][x],roof=!'HhGC'.includes(a);
+  R(sx,sy,16,16,roof?3:2);
+  if(roof){R(sx,sy+4,16,1,2);R(sx,sy+9,16,1,2)}
+  else{R(sx,sy,16,1,3);if(c==='H'){R(sx+5,sy+4,6,5,0);R(sx+5,sy+4,6,1,3)}}
+  if(c!=='H'){R(sx+3,sy+2,10,14,3);R(sx+4,sy+3,8,13,2);R(sx+10,sy+9,2,2,0)}
+  return}
+ R(sx,sy,16,16,0);if(c==='X'&&!FL.leg){ell(sx+8,sy+8,5,6,2);ell(sx+8,sy+9,3,4,1)}if(c==='V'){R(sx+2,sy+3,12,12,3);R(sx+4,sy+6,8,9,2)}if(c==='L'){R(sx,sy,16,16,2);R(sx+3,sy+4,5,2,1);R(sx+9,sy+10,5,2,1)}if((x*7+y*3)%5===0){R(sx+4,sy+5,1,1,1);R(sx+11,sy+11,1,1,1)}
+}
+function drawMap(){
+ const px=Pl.x*16+(Pl.mv?D[Pl.dir][0]*Pl.prog:0),py=Pl.y*16+(Pl.mv?D[Pl.dir][1]*Pl.prog:0);
+ const cx=Math.max(0,Math.min(MW*16-160,px-72)),cy=Math.max(0,Math.min(MH*16-144,py-64));
+ for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const sx=x*16-cx,sy=y*16-cy;if(sx>-16&&sx<160&&sy>-16&&sy<144)tile(MAP[y][x],x,y,sx,sy)}
+ NPCS.forEach(n=>{if(n.m===cur)npcSprite(n.x*16-cx,n.y*16-cy,n.c)});const f=Pl.mv?(Pl.prog>>3)&1:0;if(surf)ell(px-cx+8,py-cy+14,9,3,3);pigMap(px-cx,py-cy-(Pl.mv&&f?1:0),Pl.dir,f);
+ R(0,0,160,12,0);R(0,12,160,1,3);T(`Lv${pig.lv}  HP ${pig.hp}/${pig.max}`,3,1,3,8);T(`${nb()?'★'+nb()+' ':''}圖鑑 ${dex.size}/${ENEMIES.length}`,92,0,3,8);T(`$${BAG.coins}`,3,12,2,7);
+}
+function hpbar(x,y,w,r){T('HP',x,y-2,3,7);R(x+12,y,w,5,3);R(x+13,y+1,w-2,3,0);R(x+13,y+1,Math.round((w-2)*Math.max(0,r)),3,r>.25?2:3)}
+function drawBattle(){
+ R(0,0,160,144,0);const E=B.e;
+ ell(116,56,28,5,1);ell(40,92,30,5,1);
+ if(!(B.bl==='e'&&(S.t>>2&1)))E.d(116,32);
+ if(!(B.bl==='p'&&(S.t>>2&1)))(pig.s===undefined?pigBig(40,70):ENEMIES[pig.s].d(40,64));
+ box(4,6,82,28);T(E.n,10,9);T('Lv'+E.lv+E.t,52,9);hpbar(12,23,52,E.dh/E.max);
+ box(78,62,80,30);T(pig.n,84,65);T('Lv'+pig.lv+pig.t,118,65);hpbar(86,79,52,pig.dh/pig.max);T(`${Math.round(pig.dh)}/${pig.max}`,120,78,3,7);
+}
+function drawTitle(){
+ R(0,0,160,144,0);R(0,0,160,6,2);R(0,138,160,6,2);
+ ctx.font='15px '+FONT;let w=ctx.measureText('豬豬小可愛*粉紅').width;T('豬豬小可愛*粉紅',80-w/2,20,3,15);
+ ctx.font='12px '+FONT;w=ctx.measureText('～ 粉紅版 ～').width;T('～ 粉紅版 ～',80-w/2,44,2,12);
+ pigBig(80,88);
+ if(S.t>>5&1)return;ctx.font='10px '+FONT;w=ctx.measureText('按 A 開始').width;T('按 A 開始',80-w/2,122,3);
+}
+function drawUI(){
+ if(S.msg){
+  const m=S.msg;box(2,98,156,44);let left=m.shown|0;
+  m.l.slice(0,3).forEach((s,i)=>{T(s.slice(0,left),8,104+i*13);left-=s.length});
+  if(m.shown>=m.n&&(S.t>>4&1))R(148,134,5,3,3);
+ }else if(S.menu){
+  const m=S.menu;box(2,98,156,44);
+  if(m.box==='right'){S.prompt.split('\n').forEach((s,i)=>T(s,10,106+i*14));box(84,98,74,44);m.o.forEach((o,i)=>T(fitText((m.i===i?'▶':'　')+o,66,8),90,105+i*13,3,8))}
+  else m.o.forEach((o,i)=>{const z=m.o.length>=4?8:10,x=8+(i%2)*78,y=103+(i/2|0)*(m.o.length>4?14:16),mark=m.i===i?'▶':'　';T(fitText(mark+o,74,z),x,y,3,z)});
+ }
+}
+function draw(){
+ ctx.setTransform(3,0,0,3,0,0);
+ if(S.mode==='title')drawTitle();
+ else if(S.mode==='puzzle')drawPuz();else if(S.mode==='view')drawView();else if(S.mode==='battle')drawBattle();
+ else{drawMap();if(S.mode==='trans'){const p=(performance.now()-S.t0)/700;for(let i=0;i<9;i++){const w=Math.max(0,Math.min(160,p*220-i*12));R(i%2?160-w:0,i*16,w,16,3)}}}
+ drawUI();
+}
+function tick(){
+ S.t++;
+ if(S.msg&&S.msg.shown<S.msg.n)S.msg.shown+=.8;
+ pig.dh+=(pig.hp-pig.dh)*.15;if(Math.abs(pig.hp-pig.dh)<.3)pig.dh=pig.hp;
+ if(B){const e=B.e;e.dh+=(e.hp-e.dh)*.15;if(Math.abs(e.hp-e.dh)<.3)e.dh=e.hp}
+ if(S.mode==='map'&&!S.msg&&!S.menu){
+  if(!Pl.mv){
+   const d=held.up?'up':held.down?'down':held.left?'left':held.right?'right':null;
+   if(d){Pl.dir=d;const nx=Pl.x+D[d][0],ny=Pl.y+D[d][1];if(walk(nx,ny)){Pl.mv=true;Pl.tx=nx;Pl.ty=ny;Pl.prog=0}}
+  }else{Pl.prog+=2;if(Pl.prog>=16){Pl.x=Pl.tx;Pl.y=Pl.ty;Pl.mv=false;Pl.prog=0;arrive()}}
+ }
+ draw();requestAnimationFrame(tick);
+}
+/* ---------- input ---------- */
+const KEYS={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',z:'a',' ':'a',Enter:'a',x:'b',Escape:'b',Backspace:'b'};
+addEventListener('keydown',e=>{const k=KEYS[e.key.length>1?e.key:e.key.toLowerCase()];if(!k)return;e.preventDefault();held[k]=true;if(!e.repeat)press(k)});
+addEventListener('keyup',e=>{const k=KEYS[e.key.length>1?e.key:e.key.toLowerCase()];if(k)held[k]=false});
+document.querySelectorAll('#pad button').forEach(b=>{const k=b.dataset.k;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();held[k]=true;press(k)});
+ ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,()=>{held[k]=false}));
+});
+tick();
+</script></body></html>
