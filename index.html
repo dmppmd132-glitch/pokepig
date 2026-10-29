@@ -406,10 +406,11 @@ const TR={
 function note(t,n,d,ty,v){const o=ac.createOscillator(),e=ac.createGain();o.type=ty;o.frequency.value=mf(n);e.gain.setValueAtTime(v,t);e.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(e);e.connect(g);o.start(t);o.stop(t+d+.02)}
 function pump(){if(!ac||ac.state!=='running')return;const T=TR[cur];if(!T)return;const d=30/T.bpm;if(next<ac.currentTime)next=ac.currentTime+.05;
  while(next<ac.currentTime+.2){const L=T.lead[step%T.lead.length],B=T.bass[step%T.bass.length];if(L)note(next,L,d*1.7,T.lt,T.lv);if(B)note(next,B,d*2.2,'triangle',.1);step++;next+=d}}
-function lab(){if(btn)btn.textContent=on?'♪ 音樂：開':'♪ 音樂：關'}
-function init(){if(ac)return;try{ac=new(window.AudioContext||window.webkitAudioContext)();g=ac.createGain();g.gain.value=on?.5:0;g.connect(ac.destination);setInterval(pump,40)}catch(e){}if(ac&&ac.resume)ac.resume()}
-function toggle(){init();on=!on;if(g)g.gain.value=on?.5:0;try{localStorage.setItem('pigmon_mute',on?'0':'1')}catch(e){}lab()}
-['keydown','pointerdown'].forEach(t=>addEventListener(t,init,{once:true}));
+function lab(){if(btn)btn.textContent=!on?'♪ 音樂：關':(ac&&ac.state==='running')?'♪ 音樂：開':'♪ 點一下開啟音樂'}
+function init(){if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)();g=ac.createGain();g.gain.value=on?.5:0;g.connect(ac.destination);setInterval(pump,40);ac.onstatechange=lab}catch(e){return}}
+ if(ac.state!=='running'){try{ac.resume().then(lab).catch(()=>{})}catch(e){}try{const s=ac.createBufferSource();s.buffer=ac.createBuffer(1,1,22050);s.connect(ac.destination);s.start(0)}catch(e){}}}
+function toggle(){if(!ac||ac.state!=='running'){init();lab();return}on=!on;if(g)g.gain.value=on?.5:0;try{localStorage.setItem('pigmon_mute',on?'0':'1')}catch(e){}lab()}
+['keydown','pointerdown','pointerup','touchend','click'].forEach(t=>addEventListener(t,init,{capture:true,passive:true}));
 addEventListener('keydown',e=>{if(e.key==='m'||e.key==='M')toggle()});
 document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume()});
 return{sync(){const w=S.mode==='battle'?'b':S.mode==='puzzle'?'p':S.mode==='trans'?(cur||'t'):'t';if(w!==cur){cur=w;step=0;next=0}},bind(b){btn=b;lab();b.addEventListener('click',toggle)}}})();
