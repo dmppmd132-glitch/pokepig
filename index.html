@@ -25,7 +25,8 @@ p{margin:0;font-size:13px;opacity:.8;text-align:center;max-width:440px}
 <div class="dp"><button class="u" data-k="up">▲</button><button class="l" data-k="left">◀</button><i></i><button class="r" data-k="right">▶</button><button class="d" data-k="down">▼</button></div>
 <div class="ab"><button data-k="b">B</button><button data-k="a">A</button></div>
 </div></div>
-<p>方向鍵／WASD 移動　Z／空白鍵＝A（確認）　X＝B（返回）</p>
+<p>方向鍵／WASD 移動　Z／空白鍵＝A（確認）　X＝B（返回）　M＝音樂開關</p>
+<button id="mu" style="background:var(--btn);color:#fff;border:0;border-radius:14px;padding:6px 14px;font-size:13px"></button>
 <script>
 const P4=['#fff0f6','#ffb3cf','#d9588a','#5a1233'];
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -393,8 +394,25 @@ function tick(){
    if(d){Pl.dir=d;const nx=Pl.x+D[d][0],ny=Pl.y+D[d][1];if(walk(nx,ny)){Pl.mv=true;Pl.tx=nx;Pl.ty=ny;Pl.prog=0}}
   }else{Pl.prog+=2;if(Pl.prog>=16){Pl.x=Pl.tx;Pl.y=Pl.ty;Pl.mv=false;Pl.prog=0;arrive()}}
  }
- draw();requestAnimationFrame(tick);
+ MU.sync();draw();requestAnimationFrame(tick);
 }
+/* ---- chiptune BGM ---- */
+const MU=(()=>{let ac,g,cur='',step=0,next=0,on=true,btn;try{on=localStorage.getItem('pigmon_mute')!=='1'}catch(e){}
+const mf=n=>440*2**((n-69)/12),rp=(cs,pt)=>cs.flatMap(r=>pt.map(x=>x===null?0:r+x));
+const TR={
+ t:{bpm:132,lt:'square',lv:.045,lead:[76,0,72,76,79,0,76,72,77,0,72,77,81,0,77,72,79,0,74,79,83,0,79,74,76,74,72,0,67,0,72,0,81,0,76,81,84,0,81,76,77,0,74,77,81,77,74,0,79,77,76,74,72,74,76,0,72,0,76,0,79,0,0,0],bass:rp([48,53,55,48,45,53,55,48],[0,null,7,null,0,null,7,null])},
+ b:{bpm:150,lt:'square',lv:.05,lead:[81,0,81,84,81,0,79,76,77,0,77,81,77,0,76,72,79,0,79,83,79,0,77,74,76,0,80,83,88,0,83,80],bass:rp([45,41,43,40],[0,0,12,0,0,0,12,0])},
+ p:{bpm:96,lt:'triangle',lv:.07,lead:rp([48,53,55,48,48,53,55,48],[24,28,31,28,24,28,31,28]),bass:rp([48,53,55,48,48,53,55,48],[0,null,null,null,7,null,null,null])}};
+function note(t,n,d,ty,v){const o=ac.createOscillator(),e=ac.createGain();o.type=ty;o.frequency.value=mf(n);e.gain.setValueAtTime(v,t);e.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(e);e.connect(g);o.start(t);o.stop(t+d+.02)}
+function pump(){if(!ac||ac.state!=='running')return;const T=TR[cur];if(!T)return;const d=30/T.bpm;if(next<ac.currentTime)next=ac.currentTime+.05;
+ while(next<ac.currentTime+.2){const L=T.lead[step%T.lead.length],B=T.bass[step%T.bass.length];if(L)note(next,L,d*1.7,T.lt,T.lv);if(B)note(next,B,d*2.2,'triangle',.1);step++;next+=d}}
+function lab(){if(btn)btn.textContent=on?'♪ 音樂：開':'♪ 音樂：關'}
+function init(){if(ac)return;try{ac=new(window.AudioContext||window.webkitAudioContext)();g=ac.createGain();g.gain.value=on?.5:0;g.connect(ac.destination);setInterval(pump,40)}catch(e){}if(ac&&ac.resume)ac.resume()}
+function toggle(){init();on=!on;if(g)g.gain.value=on?.5:0;try{localStorage.setItem('pigmon_mute',on?'0':'1')}catch(e){}lab()}
+['keydown','pointerdown'].forEach(t=>addEventListener(t,init,{once:true}));
+addEventListener('keydown',e=>{if(e.key==='m'||e.key==='M')toggle()});
+document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume()});
+return{sync(){const w=S.mode==='battle'?'b':S.mode==='puzzle'?'p':S.mode==='trans'?(cur||'t'):'t';if(w!==cur){cur=w;step=0;next=0}},bind(b){btn=b;lab();b.addEventListener('click',toggle)}}})();
 /* ---------- input ---------- */
 const KEYS={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',z:'a',' ':'a',Enter:'a',x:'b',Escape:'b',Backspace:'b'};
 addEventListener('keydown',e=>{const k=KEYS[e.key.length>1?e.key:e.key.toLowerCase()];if(!k)return;e.preventDefault();held[k]=true;if(!e.repeat)press(k)});
@@ -403,5 +421,6 @@ document.querySelectorAll('#pad button').forEach(b=>{const k=b.dataset.k;
  b.addEventListener('pointerdown',e=>{e.preventDefault();held[k]=true;press(k)});
  ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,()=>{held[k]=false}));
 });
+MU.bind(document.getElementById('mu'));
 tick();
 </script></body></html>
